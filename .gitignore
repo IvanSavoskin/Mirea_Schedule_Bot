@@ -23,6 +23,7 @@
 hs_err_pid*
 
 datebase/*
+additional/*
 H2/*
 src/main/resources/log/*
 schedule/*
