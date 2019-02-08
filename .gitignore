@@ -29,3 +29,4 @@ src/main/resources/log/*
 schedule/*
 .idea/*
 bot.properties
+db.properties
