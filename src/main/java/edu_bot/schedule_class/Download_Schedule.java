@@ -1,6 +1,7 @@
 package edu_bot.schedule_class;
 
 import edu_bot.main_class.Main;
+import org.apache.commons.io.FileUtils;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -13,10 +14,9 @@ public class Download_Schedule
 {
     private static void deleteFolder()
     {
-        File folder = new File("schedule");
         try
         {
-            folder.delete();
+            FileUtils.deleteDirectory(new File("schedule"));
             Main._Log.info("Папка удалена");
         }
         catch (Exception e)

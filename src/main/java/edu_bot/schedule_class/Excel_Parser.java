@@ -469,6 +469,7 @@ public class Excel_Parser
                 if (md5Check)
                 {
                     mainScheduleExcelParser();
+                    context.getBean(File_Sum_Search.class).addMd5("main_schedule/main_schedule.xlsx");
                 }
                 else
                 {
@@ -481,6 +482,7 @@ public class Excel_Parser
                     Main._Log.info("Проверка md5-суммы файла: " + fileName + "\n");
                     md5Check = context.getBean(File_Sum_Search.class).checkMd5("schedule/" + fileName);
                     Main._Log.info("Md5-сумма файла " + fileName + " проверена\n");
+
                     if (md5Check)
                     {
                         Main._Log.info("Начинается парсинг файла " + fileName + "\n");

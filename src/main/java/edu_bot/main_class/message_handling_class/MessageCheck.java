@@ -424,13 +424,16 @@ public class MessageCheck
             else
             {
                 String fileName = groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getFileName();
-                try {
+                try
+                {
                     FileInputStream schedule = new FileInputStream("./schedule/" + fileName);
                     bot.sendDocument(msg_final, fileName, schedule);
-                } catch (FileNotFoundException e) {
+                }
+                catch (FileNotFoundException e)
+                {
                     Main._Log.warn("Не удалось отправить файл расписания" + e);
                     bot.sendMsg(msg_final, "К сожалению в данный момент невозможно скачать " +
-                            "данное расписание. Попробуйте позже", true);
+                            "данное расписание. Возможно оно уже не используется", true);
                 }
             }
 
@@ -451,52 +454,11 @@ public class MessageCheck
 
                 Calendar c = Calendar.getInstance();
 
-                if (additionalMessageHandling.isSemester(c))
+                for (int i = 1; i <= 7; i++)
                 {
-                    Date date = c.getTime();
-                    Integer dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK))%7;
-                    Integer numberOfWeek = additionalMessageHandling.getCurrentWeek(c);
-                    if (dayOfWeek == 7)
-                    {
-                        numberOfWeek = numberOfWeek - 1;
-                    }
-                    String day = new SimpleDateFormat( "EEEE", new Locale("ru")).format(date);
-                    for (int i = dayOfWeek; i <= 7; i++)
-                    {
-                        bot.sendMsg(msg_final, "*" +
-                                additionalMessageHandling.firstUpperCase(day) + ", " +
-                                numberOfWeek + " неделя*", false);
-                        bot.sendChatActionTyping(msg_final);
-                        additionalMessageHandling.sendScheduleForDate(msg_final, i,
-                                numberOfWeek%2, day);
+                        additionalMessageHandling.preparationScheduleSend(msg_final, c);
                         c.add(Calendar.DATE, 1);
-                        date = c.getTime();
-                        day = new SimpleDateFormat("EEEE", new Locale("ru")).format(date);
-                    }
-                    numberOfWeek++;
-                    for (int i = 1; i < dayOfWeek; i++)
-                    {
-                        bot.sendMsg(msg_final, "*" +
-                                additionalMessageHandling.firstUpperCase(day) + ", " +
-                                numberOfWeek + " неделя*", false);
-                        bot.sendChatActionTyping(msg_final);
-                        additionalMessageHandling.sendScheduleForDate(msg_final, i,
-                                numberOfWeek%2, day);
-                        c.add(Calendar.DATE, 1);
-                        date = c.getTime();
-                        day = new SimpleDateFormat("EEEE", new Locale("ru")).format(date);
-                    }
                 }
-                else if (additionalMessageHandling.isTestSession(c))
-                {
-                    bot.sendMsg(msg_final, "Сейчас идет зачетная сессия", true);
-                }
-                else if (additionalMessageHandling.isExamSession(c))
-                {
-                    bot.sendMsg(msg_final, "Сейчас идет экзаменационная сессия", true);
-                }
-                else
-                    bot.sendMsg(msg_final, "*Сейчас каникулы!*", true);
             }
         }
         else if (txt.equals(Emoji.Six_O_clock + "Пары"))
@@ -584,12 +546,24 @@ public class MessageCheck
         }
         else if (txt.equals(Emoji.Three_O_clock + "Неделя"))
         {
-
             bot.sendChatActionTyping(msg_final);
             Calendar c = Calendar.getInstance();
-            bot.sendMsg(msg_final, "Сейчас идет " +
-                    additionalMessageHandling.getCurrentWeek(c).toString() +
-                    " неделя", true);
+            if (additionalMessageHandling.isSemester(c))
+            {
+                bot.sendMsg(msg_final, "Сейчас идет " +
+                        additionalMessageHandling.getCurrentWeek(c).toString() +
+                        " неделя", true);
+            }
+            else if (additionalMessageHandling.isTestSession(c))
+            {
+                bot.sendMsg(msg_final, "Сейчас идет зачетная сессия", true);
+            }
+            else if (additionalMessageHandling.isExamSession(c))
+            {
+                bot.sendMsg(msg_final, "Сейчас идет экзаменационная сессия", true);
+            }
+            else
+                bot.sendMsg(msg_final, "*Сейчас каникулы!*", true);
         }
         else if (txt.equals(Emoji.Twelve_O_clock + "Сессия"))
         {

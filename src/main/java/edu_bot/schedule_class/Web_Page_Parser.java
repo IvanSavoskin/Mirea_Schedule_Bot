@@ -48,7 +48,8 @@ public class Web_Page_Parser
                     !link.attr("abs:href").contains("itht_bak_3k_18_19_osen-1_8.xlsx") &&
                     !link.attr("abs:href").contains("itht_bak_3k_18_19_osen.xlsx") &&
                     !link.attr("abs:href").contains("itht_bak_4k_18_19_osen.xlsx") &&
-                    !link.attr("abs:href").contains("itht_bak_4k_18_19_osen-1_8.xlsx"))//TODO: Разобраться в чем дело
+                    !link.attr("abs:href").contains("itht_bak_4k_18_19_osen-1_8.xlsx") &&
+                    !link.attr("abs:href").contains("zach_FTI_Stromynka-5-kurs.xlsx"))//TODO: Разобраться в чем дело
 
             {
                 href.add(link.attr("abs:href"));

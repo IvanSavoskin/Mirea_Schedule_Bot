@@ -53,7 +53,7 @@ public class AdditionalMessageHandling
         Date semesterStartDate = educationDate.getSemesterStartDate();
         Date testSessionStartDate = educationDate.getTestSessionStartDate();
 
-        if (testSessionStartDate != null && semesterStartDate != null)
+        if (testSessionStartDate != null && semesterStartDate != null && testSessionStartDate.after(semesterStartDate))
         {
             Calendar c1 = Calendar.getInstance();
             c1.setTime(testSessionStartDate);
@@ -64,9 +64,9 @@ public class AdditionalMessageHandling
                     (currentDate.before(semesterStopDate) || currentDate.equals(semesterStopDate)))
                 isSemester = true;
         }
-        else if (semesterStartDate != null && testSessionStartDate == null)
+        else if (semesterStartDate != null && (testSessionStartDate == null || testSessionStartDate.before(semesterStartDate)))
         {
-            if (currentDate.after(semesterStartDate) || currentDate.equals(semesterStartDate))
+            if (currentDate.after(semesterStartDate) || currentDate.equals(semesterStartDate) )
                 isSemester = true;
         }
 
@@ -84,7 +84,7 @@ public class AdditionalMessageHandling
 
         Date currentDate = c.getTime();
 
-        if (testSessionStartDate != null && examSessionStartDate != null)
+        if (testSessionStartDate != null && examSessionStartDate != null && examSessionStartDate.after(testSessionStartDate))
         {
             Calendar c1 = Calendar.getInstance();
             c1.setTime(examSessionStartDate);
@@ -95,7 +95,7 @@ public class AdditionalMessageHandling
                     (currentDate.before(testSessionStopDate) || currentDate.equals(testSessionStopDate)))
                 isTestSession = true;
         }
-        else if (testSessionStartDate != null && examSessionStartDate == null)
+        else if (testSessionStartDate != null && (examSessionStartDate == null || examSessionStartDate.before(testSessionStartDate)))
         {
             if (currentDate.after(testSessionStartDate) || currentDate.equals(testSessionStartDate))
                 isTestSession = true;
@@ -114,13 +114,13 @@ public class AdditionalMessageHandling
         Date examSessionStartDate = educationDate.getExamSessionStartDate();
         Date examSessionStopDate = educationDate.getExamSessionStopDate();
 
-        if (examSessionStartDate != null && examSessionStopDate != null)
+        if (examSessionStartDate != null && examSessionStopDate != null && examSessionStopDate.after(examSessionStartDate))
         {
             if ((currentDate.after(examSessionStartDate) || currentDate.equals(examSessionStartDate)) &&
                     (currentDate.before(examSessionStopDate) || currentDate.equals(examSessionStopDate)))
                 isExamSession = true;
         }
-        else if (examSessionStartDate != null && examSessionStopDate == null)
+        else if (examSessionStartDate != null && (examSessionStopDate == null || examSessionStopDate.after(examSessionStartDate)))
         {
             if (currentDate.after(examSessionStartDate) || currentDate.equals(examSessionStartDate))
                 isExamSession = true;
@@ -306,9 +306,10 @@ public class AdditionalMessageHandling
     /** Подготовка к отправке расписания */
     protected void preparationScheduleSend(Message msg_final, Calendar c)
     {
+        Date date = c.getTime();
+        String writeDate = new SimpleDateFormat( "dd MMMM yyyy", new Locale("ru")).format(date);
         if (isSemester(c))
         {
-            Date date = c.getTime();
             String day = new SimpleDateFormat( "EEEE", new Locale("ru")).format(date);
             int dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK))%7;
             int numberOfWeek = getCurrentWeek(c);
@@ -316,21 +317,24 @@ public class AdditionalMessageHandling
             {
                 numberOfWeek = numberOfWeek - 1;
             }
-            bot.sendMsg(msg_final, "*" + firstUpperCase(day) + ", " + numberOfWeek +
+            bot.sendMsg(msg_final, writeDate + "\n*" + firstUpperCase(day) + ", " + numberOfWeek +
                     " неделя*", false);
             bot.sendChatActionTyping(msg_final);
             sendScheduleForDate(msg_final, dayOfWeek, numberOfWeek, day);
         }
         else if (isTestSession(c))
         {
-            bot.sendMsg(msg_final, "Сейчас идет зачетная сессия", true);
+            bot.sendMsg(msg_final,  writeDate + "\nСейчас идет зачетная сессия", true);
         }
         else if (isExamSession(c))
         {
-            bot.sendMsg(msg_final, "Сейчас идет экзаменационная сессия", true);
+
+            bot.sendMsg(msg_final, writeDate + "\nСейчас идет экзаменационная сессия", true);
         }
         else
-            bot.sendMsg(msg_final, "*Сейчас каникулы!*", true);
+        {
+            bot.sendMsg(msg_final,  writeDate + "\n*Сейчас каникулы!*", true);
+        }
     }
 
     /** Отправка номера пары */
