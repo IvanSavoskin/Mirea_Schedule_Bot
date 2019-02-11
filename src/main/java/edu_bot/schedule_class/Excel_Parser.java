@@ -1,18 +1,24 @@
 package edu_bot.schedule_class;
 
 import edu_bot.db_class.dao.*;
+import edu_bot.db_class.model.Group;
+import edu_bot.db_class.model.User;
 import edu_bot.main_class.AppConfig;
+import edu_bot.main_class.Bot;
 import edu_bot.main_class.Main;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.ApiContextInitializer;
+import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -30,9 +36,12 @@ public class Excel_Parser
     private final ScheduleDao scheduleDao;
     private final TeacherDao teacherDao;
     private final EducationDateDao educationDateDao;
+    private final UserDao userDao;
+    private final Bot bot;
 
     public Excel_Parser(GroupDao groupDao, ClassroomDao classroomDao, SubjectDao subjectDao, ScheduleDao scheduleDao,
-                        SubjectTypeDao subjectTypeDao, TeacherDao teacherDao, EducationDateDao educationDateDao)
+                        SubjectTypeDao subjectTypeDao, TeacherDao teacherDao, EducationDateDao educationDateDao,
+                        UserDao userDao, Bot bot)
     {
 
         this.classroomDao = classroomDao;
@@ -42,6 +51,8 @@ public class Excel_Parser
         this.subjectTypeDao = subjectTypeDao;
         this.teacherDao = teacherDao;
         this.educationDateDao = educationDateDao;
+        this.userDao = userDao;
+        this.bot = bot;
     }
 
     private void excelParser(String fileName) throws IOException
@@ -52,7 +63,12 @@ public class Excel_Parser
         Integer subjectTypeId = subjectTypeDao.Count();
         Integer teacherId = teacherDao.Count();
         Integer scheduleId = scheduleDao.Count();
-        String Group;
+        String group;
+        String text1 = "В данный момент расписание для группы, расписание которого вы " +
+                "используете обновляется, так что в следующие 10 минут оно может быть неполным " +
+                "или неверным. Как только обновление завершиться придет еще одно сообщение";
+        String text2 = "Расписание обновлено. При обноружении каких-либо ошибок в нем просьба написать разработчику " +
+                "с помощью обратной связи";
 
         XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream("schedule/" + fileName));
 
@@ -85,21 +101,30 @@ public class Excel_Parser
                         case STRING:
                             if (checkGroupCellPlus(cell.getStringCellValue()))
                             {
-                                Group = cell.getStringCellValue();
+                                group = cell.getStringCellValue();
 
-                                Main._Log.info("Группа " + Group + " подана на разбор\n");
+                                Main._Log.info("Группа " + group + " подана на разбор\n");
 
                                 Integer currentGroupId;
 
-                                if (groupDao.getGroupForName(Group).size() == 0)
+                                if (groupDao.getGroupForName(group).size() == 0)
                                 {
                                     groupId++;
-                                    groupDao.Merge(groupId, Group, fileName);
+                                    groupDao.Merge(groupId, group, fileName);
                                     currentGroupId = groupId;
                                 }
                                 else
                                 {
-                                    currentGroupId = groupDao.getGroupForName(Group).get(0).getId();
+                                    Group gr = groupDao.getGroupForName(group).get(0);
+                                    currentGroupId = gr.getId();
+                                    groupDao.Merge(currentGroupId, gr.getGroupName(), fileName);
+                                }
+
+                                List<User> users = userDao.getUsersForGroup(currentGroupId);
+
+                                for (User user : users)
+                                {
+                                    bot.sendMsgToUser(user.getChatId(), text1);
                                 }
 
                                 if (scheduleDao.getGroupSchedules(currentGroupId).size() > 0)
@@ -387,6 +412,10 @@ public class Excel_Parser
 
                                     }
                                     rowNumSchedule++;
+                                }
+                                for (User user : users)
+                                {
+                                    bot.sendMsgToUser(user.getChatId(), text2);
                                 }
                             }
                             break;
