@@ -76,6 +76,7 @@ public class Download_Schedule
                 Download_Schedule.download(Web_Page_Parser.href.get(i), Web_Page_Parser.href_name.get(i));
                 Main._Log.info("Файл " +  Web_Page_Parser.href_name.get(i) + " закачан");
             }
+            Main._Log.info("Загрузка всех файлов расписаний завершена");
         }
         catch (IOException e)
         {

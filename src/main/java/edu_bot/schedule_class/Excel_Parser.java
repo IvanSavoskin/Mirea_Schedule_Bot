@@ -497,6 +497,7 @@ public class Excel_Parser
                         Main._Log.info("Файл " + fileName + " не изменился, переходим к следующему файлу\n");
                     }
                 }
+                Main._Log.info("Парсинг всех расписаний закончен\n");
             }
             catch (IOException e)
             {
