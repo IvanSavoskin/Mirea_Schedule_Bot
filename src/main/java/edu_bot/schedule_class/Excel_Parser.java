@@ -489,53 +489,70 @@ public class Excel_Parser
     {
         ApiContextInitializer.init();
         final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
-
+        boolean md5Check;
             try
             {
                 Main._Log.info("Проверка md5-суммы файла: основного расписания\n");
-                boolean md5Check = context.getBean(File_Sum_Search.class).checkMd5("main_schedule/main_schedule.xlsx");
+                md5Check = context.getBean(File_Sum_Search.class).checkMd5("main_schedule/main_schedule.xlsx");
                 Main._Log.info("Md5-сумма файла основного расписания проверена\n");
                 if (md5Check)
                 {
-                    mainScheduleExcelParser();
-                    context.getBean(File_Sum_Search.class).addMd5("main_schedule/main_schedule.xlsx");
+                    try
+                    {
+                        mainScheduleExcelParser();
+                        context.getBean(File_Sum_Search.class).addMd5("main_schedule/main_schedule.xlsx");
+                    }
+                    catch (Exception e)
+                    {
+                        Main._Log.warn("Не удалось распарсить расписание:\n" + e);
+                    }
                 }
                 else
                 {
                     Main._Log.info("Файл основного расписания не изменился, переходим к разбору расписаний\n");
                 }
+            }
+            catch (IOException e)
+            {
+                Main._Log.warn("Не удалось открыть файлы с расписаниями\n", e);
+            }
 
-                for (int i=0; i < Web_Page_Parser.href_name.size(); i++)
+            for (int i=0; i < Web_Page_Parser.href_name.size(); i++)
+            {
+                String fileName = Web_Page_Parser.href_name.get(i);
+                Main._Log.info("Проверка md5-суммы файла: " + fileName + "\n");
+                try
                 {
-                    String fileName = Web_Page_Parser.href_name.get(i);
-                    Main._Log.info("Проверка md5-суммы файла: " + fileName + "\n");
                     md5Check = context.getBean(File_Sum_Search.class).checkMd5("schedule/" + fileName);
                     Main._Log.info("Md5-сумма файла " + fileName + " проверена\n");
 
                     if (md5Check)
                     {
                         Main._Log.info("Начинается парсинг файла " + fileName + "\n");
-                        excelParser(fileName);
-                        Main._Log.info("Парсинг файла " + fileName + " закончен\n");
-                        Main._Log.info("Добавление md5-суммы для файла " + fileName + "\n");
-                        context.getBean(File_Sum_Search.class).addMd5("schedule/" + fileName);
-                        Main._Log.info("Md5-сумма файла " + fileName + " добавлена\n");
+
+                            excelParser(fileName);
+                            Main._Log.info("Парсинг файла " + fileName + " закончен\n");
+                            Main._Log.info("Добавление md5-суммы для файла " + fileName + "\n");
+                            context.getBean(File_Sum_Search.class).addMd5("schedule/" + fileName);
+                            Main._Log.info("Md5-сумма файла " + fileName + " добавлена\n");
                     }
                     else
                     {
                         Main._Log.info("Файл " + fileName + " не изменился, переходим к следующему файлу\n");
                     }
                 }
-                Main._Log.info("Парсинг всех расписаний закончен\n");
+                catch (IOException e)
+                {
+                    Main._Log.warn("Не удалось открыть файлы с расписаниями\n", e);
+                }
+                catch (Exception e)
+                {
+                    Main._Log.warn("Не удалось распарсить расписание:\n" + e);
+                }
             }
-            catch (IOException e)
-            {
-                Main._Log.warn("Не удалось открыть файлы с расписаниями\n", e);
-            }
-            catch (Exception e)
-            {
-                Main._Log.warn("Не удалось распарсить расписание:\n" + e);
-            }
+            Main._Log.info("Парсинг всех расписаний закончен\n");
+
+
     }
 
 }

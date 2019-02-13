@@ -32,9 +32,9 @@ public class Main
         ApiContextInitializer.init();
         final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
 
-        _Log.info("Удаление всех md5-сумм");
+        /*_Log.info("Удаление всех md5-сумм");
         context.getBean(FileSumDao.class).DeleteAll();
-        _Log.info("Md5-суммы удалены");
+        _Log.info("Md5-суммы удалены");*/
 
         /** Загрузка файлов с расписаниями по таймеру (каждые день) */
         long period = 86400000L;
