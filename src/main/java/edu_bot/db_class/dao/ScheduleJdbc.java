@@ -86,7 +86,7 @@ public class ScheduleJdbc implements ScheduleDao
     }
 
     @Override
-    public List<Schedule> getSchedulesForGroup(Integer groupId, Integer numberOfWeek, Integer dayOfWeek, Long chatId)
+    public List<Schedule> getSchedulesForGroupForDay(Integer groupId, Integer numberOfWeek, Integer dayOfWeek, Long chatId)
     {
         return jdbcTemplate.query("SELECT * FROM \"Schedule\" JOIN \"Group_Schedule\" " +
                 "ON \"Schedule\".\"id\" = \"Group_Schedule\".\"scheduleId\" JOIN \"Group\" ON \"Group\".\"id\" = " +
@@ -98,6 +98,19 @@ public class ScheduleJdbc implements ScheduleDao
                 " WHERE \"Group_Schedule\".\"groupId\" = ? AND \"Schedule\".\"numberOfWeek\" = ? " +
                 "AND \"Schedule\".\"dayOfWeek\" = ? AND \"User\".\"chatId\" = ?", this::mapScheduleFor,
                 groupId, numberOfWeek, dayOfWeek, chatId);
+    }
+
+    @Override
+    public List<Schedule> getSchedulesForGroup(Integer groupId)
+    {
+        return jdbcTemplate.query("SELECT * FROM \"Schedule\" JOIN \"Group_Schedule\" " +
+                        "ON \"Schedule\".\"id\" = \"Group_Schedule\".\"scheduleId\" JOIN \"Group\" ON \"Group\".\"id\" = " +
+                        "\"Group_Schedule\".\"groupId\" JOIN \"User\" ON \"Group\".\"id\" = \"User\".\"groupId\" " +
+                        "JOIN \"ClassTime\" ON \"Schedule\".\"classNumber\" = \"ClassTime\".\"classNumber\" " +
+                        "JOIN \"Classroom\" ON \"Schedule\".\"classroomId\" = \"Classroom\".\"id\" JOIN \"Subject\" " +
+                        "ON \"Schedule\".\"subjectId\" = \"Subject\".\"id\" JOIN \"Teacher\" ON \"Subject\".\"teacherId\" = " +
+                        "\"Teacher\".\"id\" JOIN \"SubjectType\" ON \"Schedule\".\"subjectTypeId\" = \"SubjectType\".\"id\"" +
+                        " WHERE \"Group_Schedule\".\"groupId\" = ? ", this::mapScheduleFor, groupId);
     }
 
     @Override

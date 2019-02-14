@@ -1,6 +1,5 @@
 package edu_bot.main_class;
 
-import edu_bot.db_class.dao.FileSumDao;
 import edu_bot.schedule_class.Download_Schedule;
 import edu_bot.schedule_class.Excel_Parser;
 import org.apache.logging.log4j.LogManager;

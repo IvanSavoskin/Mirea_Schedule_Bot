@@ -11,9 +11,6 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.ApiContextInitializer;
-import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
-import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.Date;
@@ -66,8 +63,8 @@ public class Excel_Parser
         String group;
         String text1 = "В данный момент расписание для группы, расписание которого вы " +
                 "используете обновляется, так что в следующие 10 минут оно может быть неполным " +
-                "или неверным. Как только обновление завершиться придет еще одно сообщение";
-        String text2 = "Расписание обновлено. При обноружении каких-либо ошибок в нем просьба написать разработчику " +
+                "или неверным. Как только обновление завершится придет еще одно сообщение";
+        String text2 = "Расписание обновлено. При обнаружении каких-либо ошибок в нем просьба написать разработчику " +
                 "с помощью обратной связи";
 
         XSSFWorkbook workbook = new XSSFWorkbook(new FileInputStream("schedule/" + fileName));

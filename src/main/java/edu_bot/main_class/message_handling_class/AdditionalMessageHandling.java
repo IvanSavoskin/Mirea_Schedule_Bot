@@ -188,10 +188,10 @@ public class AdditionalMessageHandling
                 newNumberOfWeek = -2;
             else
                 newNumberOfWeek = -1;
-            List<Schedule> schedules = scheduleDao.getSchedulesForGroup(groupId, newNumberOfWeek,
+            List<Schedule> schedules = scheduleDao.getSchedulesForGroupForDay(groupId, newNumberOfWeek,
                     dayOfWeek, msg_final.getChatId());
             if (schedules.size() == 0)
-                schedules = scheduleDao.getSchedulesForGroup(groupId, numberOfWeek, dayOfWeek, msg_final.getChatId());
+                schedules = scheduleDao.getSchedulesForGroupForDay(groupId, numberOfWeek, dayOfWeek, msg_final.getChatId());
 
             Main._Log.info("Отправка блока расписаний для группы " + groupDao.getGroup(groupId).getGroupName()
                     + " для дня недели " + day + ". Количество пар равно " + schedules.size() + "\n");
@@ -383,10 +383,10 @@ public class AdditionalMessageHandling
                 newNumberOfWeek = -2;
             else
                 newNumberOfWeek = -1;
-            List<Schedule> schedules = scheduleDao.getSchedulesForGroup(groupId, newNumberOfWeek, dayOfWeek,
+            List<Schedule> schedules = scheduleDao.getSchedulesForGroupForDay(groupId, newNumberOfWeek, dayOfWeek,
                     msg_final.getChatId());
             if (schedules.size() == 0)
-                schedules = scheduleDao.getSchedulesForGroup(groupId, numberOfWeek, dayOfWeek, msg_final.getChatId());
+                schedules = scheduleDao.getSchedulesForGroupForDay(groupId, numberOfWeek, dayOfWeek, msg_final.getChatId());
 
             Main._Log.info("Отправка расписания " + classNumber + " пары для группы " + user.getGroupName()
                     + " для дня недели " + day + "\n");

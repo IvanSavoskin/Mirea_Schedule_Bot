@@ -54,7 +54,7 @@ public class GroupJdbc implements GroupDao
         return jdbcTemplate.queryForObject("SELECT * FROM \"Group\" WHERE \"id\" = ?", (rs,row) -> new Group(
                 rs.getInt("id"), rs.getString("groupName"),
                 userDao.getUsersForGroup(rs.getInt("id")), scheduleDao.
-                getSchedulesForGroup(userDao.getUser(chatId).getGroupId(), numberOfWeek, dayOfWeek, chatId)),
+                        getSchedulesForGroupForDay(userDao.getUser(chatId).getGroupId(), numberOfWeek, dayOfWeek, chatId)),
                 userDao.getUser(chatId).getGroupId());
     }
 

@@ -20,7 +20,9 @@ public interface ScheduleDao
 
     List<Schedule> getSchedulesForUserForDay(Long chatId, Integer numberOfWeek, Integer dayOfWeek);
 
-    List<Schedule> getSchedulesForGroup(Integer groupId, Integer numberOfWeek, Integer dayOfWeek, Long chatId);
+    List<Schedule> getSchedulesForGroup(Integer groupId);
+
+    List<Schedule> getSchedulesForGroupForDay(Integer groupId, Integer numberOfWeek, Integer dayOfWeek, Long chatId);
 
     List<Schedule> getGroupSchedules(Integer groupId);
 

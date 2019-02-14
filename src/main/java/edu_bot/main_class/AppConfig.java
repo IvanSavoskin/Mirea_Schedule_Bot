@@ -71,7 +71,7 @@ public class AppConfig
        dataSource.setDriverClass(org.h2.Driver.class);
        dataSource.setUsername(getH2Username());
        dataSource.setPassword("");
-       dataSource.setUrl("jdbc:h2:file:./H2/H2_DateBase;init=runscript from './schema.sql';IFEXISTS=false;DB_CLOSE_ON_EXIT=FALSE");
+       dataSource.setUrl("jdbc:h2:file:./H2/H2_DateBase;init=runscript from './H2/schema.sql';IFEXISTS=false;DB_CLOSE_ON_EXIT=FALSE");
 
        return dataSource;
    }
