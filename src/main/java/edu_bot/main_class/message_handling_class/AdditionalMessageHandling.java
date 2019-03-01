@@ -342,42 +342,82 @@ public class AdditionalMessageHandling
     {
         Date timeStart = null;
         Date timeStop = null;
+        Date nextTimeStart = null;
         Date date = null;
         int classNumber = 0;
         List<ClassTime> classTimes = classTimeDao.getClassTimes();
-        for (int i = 1; i <= 8; i++)
+        for (int i = 0; i < 7; i++)
         {
 
             String classStart = classTimes.get(i).getClassStart();
             String classStop = classTimes.get(i).getClassStop();
-            SimpleDateFormat format = new SimpleDateFormat("HH:mm");
-            try
+            if (i < 7)
             {
-                timeStart = format.parse(classStart);
-                timeStop = format.parse(classStop);
-                date = format.parse(time);
+                String nextClassStart = classTimes.get(i+1).getClassStart();
+
+                SimpleDateFormat format = new SimpleDateFormat("HH:mm");
+                try
+                {
+                    timeStart = format.parse(classStart);
+                    timeStop = format.parse(classStop);
+                    nextTimeStart = format.parse(nextClassStart);
+
+                    date = format.parse(time);
+                }
+                catch (ParseException e)
+                {
+                    Main._Log.warn("Время не переведено в формат дата:\n" + e.toString() + "\n");
+                }
+                if (timeStart != null && timeStop != null && nextTimeStart != null)
+                {
+                    if (((date.after(timeStart)) || date.equals(timeStart)) && ((date.before(timeStop))))
+                    {
+                        classNumber = i + 1;
+                        break;
+                    }
+                    else if ((date.equals(timeStop) || date.after(timeStop)) && date.before(nextTimeStart))
+                    {
+                        classNumber = -1*i - 1;
+                        break;
+                    }
+                }
             }
-            catch (ParseException e)
+            else if (i == 7)
             {
-                Main._Log.warn("Время не переведено в формат дата:\n" + e.toString() + "\n");
-            }
-            if (timeStart != null && timeStop != null)
-            {
-                if (((date.after(timeStart)) || date.equals(timeStart)) && ((date.before(timeStop)) || date.equals(timeStop)))
-                    classNumber = i;
+                SimpleDateFormat format = new SimpleDateFormat("HH:mm");
+                try
+                {
+                    timeStart = format.parse(classStart);
+                    timeStop = format.parse(classStop);
+
+                    date = format.parse(time);
+                }
+                catch (ParseException e)
+                {
+                    Main._Log.warn("Время не переведено в формат дата:\n" + e.toString() + "\n");
+                }
+                if (timeStart != null && timeStop != null)
+                {
+                    if (((date.after(timeStart)) || date.equals(timeStart)) && ((date.before(timeStop))))
+                        classNumber = i + 1;
+                }
             }
         }
         return classNumber;
     }
 
     /** Отправка расписания конкретной пары */
-    protected void sendScheduleForTime(Message msg_final, Integer dayOfWeek, Integer numberOfWeek, Integer classNumber, String day)
+    protected void sendScheduleForTime(Message msg_final, Integer classNumber, Calendar c)
     {
-
+        Date date = c.getTime();
+        Integer dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK))%7;
+        String day = new SimpleDateFormat("EEEE").format(date);
+        Integer numberOfWeek = getCurrentWeek(c);
         User user = userDao.getUser(msg_final.getChatId());
-        if ((user.getGroupId() != 0) && (user.getGroupId() != null))
+        Integer groupId = user.getGroupId();
+        List<Schedule> userSchedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
+        if ((groupId != 0) && (groupId != null) && userSchedules.size() == 0)
         {
-            Integer groupId = user.getGroupId();
             int newNumberOfWeek;
             if (numberOfWeek%2 == 0)
                 newNumberOfWeek = -2;
@@ -390,62 +430,62 @@ public class AdditionalMessageHandling
 
             Main._Log.info("Отправка расписания " + classNumber + " пары для группы " + user.getGroupName()
                     + " для дня недели " + day + "\n");
-
+            String writeDate = new SimpleDateFormat( "dd MMMM yyyy", new Locale("ru")).format(date);
             if (schedules.size() > 0)
             {
-                Integer scheduleId = -1;
+                boolean scheduleSend = false;
                 for (Schedule schedule : schedules)
                 {
                     if (classNumber.equals(schedule.getClassNumber()))
                     {
-                        scheduleId = schedule.getId();
+                        String subjectName = "";
+                        String subjectType = "";
+                        String className = "";
+                        String surname = "";
+                        String name = "";
+                        String second_name = "";
+                        String classTime;
+
+                        if (schedule.getSubjectName() != null)
+                            subjectName = schedule.getSubjectName() + " ";
+
+                        if (schedule.getTypeName() != null)
+                            subjectType = schedule.getTypeName() + " ";
+
+                        if (schedule.getClassName() != null)
+                            className = schedule.getClassName() + " ";
+
+                        if (schedule.getSurname() != null)
+                            surname = schedule.getSurname() + " ";
+
+                        if (schedule.getName() != null)
+                            name = schedule.getName() + " ";
+
+                        if (schedule.getSecond_name() != null)
+                            second_name = schedule.getSecond_name();
+
+                        classTime = schedule.getClassNumber().toString() + " пара (" + schedule.getClassStart()
+                                + "-" + schedule.getClassStop() + ")\n";
+
+                        bot.sendChatActionTyping(msg_final);
+                        bot.sendMsg(msg_final, writeDate + "\n*" + firstUpperCase(day) + ", " + numberOfWeek +
+                                " неделя*\n\n" + classTime + subjectName + subjectType + className + surname +
+                                name + second_name, true);
+                        scheduleSend = true;
                     }
                 }
-
-                if (scheduleId != -1)
+                if (!scheduleSend)
                 {
-                    String subjectName = "";
-                    String subjectType = "";
-                    String className = "";
-                    String surname = "";
-                    String name = "";
-                    String second_name = "";
-                    String classTime;
-
-                    Schedule schedule = schedules.get(scheduleId);
-
-                    if (schedule.getSubjectName() != null)
-                        subjectName = schedule.getSubjectName() + " ";
-
-                    if (schedule.getTypeName() != null)
-                        subjectType = schedule.getTypeName() + " ";
-
-                    if (schedule.getClassName() != null)
-                        className = schedule.getClassName() + " ";
-
-                    if (schedule.getSurname() != null)
-                        surname = schedule.getSurname() + " ";
-
-                    if (schedule.getName() != null)
-                        name = schedule.getName() + " ";
-
-                    if (schedule.getSecond_name() != null)
-                        second_name = schedule.getSecond_name();
-
-                    classTime = schedule.getClassNumber().toString() + " пара (" + schedule.getClassStart()
-                            + "-" + schedule.getClassStop() + ")\n";
-
                     bot.sendChatActionTyping(msg_final);
-                    bot.sendMsg(msg_final, classTime + subjectName + subjectType +
-                            className + surname + name + second_name, true);
+                    bot.sendMsg(msg_final,  writeDate + "\n*" + firstUpperCase(day) + ", " + numberOfWeek +
+                            " неделя*\n\n" + "Сегодня у вас нет " + classNumber + " пары", true);
                 }
-                else bot.sendMsg(msg_final,  "Сегодня у вас нет " + classNumber + " пары!",
-                        true);
             }
-            else bot.sendMsg(msg_final,  "Сегодня у вас нет пар",
-                    true);
+            else
+                bot.sendMsg(msg_final,  writeDate + "\n*" + firstUpperCase(day) + ", " + numberOfWeek +
+                        " неделя*\n\n" + "Сегодня у вас нет пар", true);
         }
-        else if (scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() != 0)
+        else if (userSchedules.size() != 0)
         {
             int newNumberOfWeek;
             if (numberOfWeek%2 == 0)
@@ -514,8 +554,7 @@ public class AdditionalMessageHandling
             else bot.sendMsg(msg_final,  "Сегодня у вас нет пар",
                     true);
         }
-        else if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                ((user.getGroupId() == 0) || (user.getGroupId() == null)))
+        else if (userSchedules.size() == 0 && ((groupId == 0) || (groupId == null)))
         {
             bot.sendMsg(msg_final, "К вашему профилю не подключены расписания. " +
                     "Выберете группу в меню настроек или установите свое расписание", true);
@@ -546,7 +585,6 @@ public class AdditionalMessageHandling
                                 "найдено, так как они не указаны в расписании", true);
                         bot.sendChatActionTyping(msg_final);
                         bot.sendTeacherKeyboard(msg_final, false);
-                        return;
                     }
                     else
                     {
@@ -554,8 +592,6 @@ public class AdditionalMessageHandling
                         bot.sendTeacherKeyboard(msg_final, false);
                     }
                 }
-                getTeacherBySubject(txt, msg_final, teachers);
-                bot.sendTeacherKeyboard(msg_final, false);
             }
             else
             {
@@ -708,7 +744,7 @@ public class AdditionalMessageHandling
 
     protected boolean checkDate(String date)
     {
-        Pattern p = Pattern.compile("\\d\\d\\.\\d\\d\\.\\d\\d\\d\\d");
+        Pattern p = Pattern.compile("[1-31]\\.[1-12]\\.\\d\\d\\d\\d");
         Matcher m = p.matcher(date);
         return  m.matches();
     }

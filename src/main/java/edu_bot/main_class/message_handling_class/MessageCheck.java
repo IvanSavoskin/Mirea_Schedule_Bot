@@ -160,6 +160,12 @@ public class MessageCheck
             }
 
         }
+        else if (txt.equals("/stop") || txt.equals("/stop@MireaSchedule_Bot") || txt.equals("/stop@HappyEduBot"))
+        {
+            bot.sendChatActionTyping(msg_final);
+            bot.sendMsgReply(msg_final, "Вы уверены, что хотите отключиться от бота? Если вы это сделаете, " +
+                    "то ваши данные удаляться. В ответ пришлите *Да* или *Нет*");
+        }
         else if (txt.equals(Emoji.Left_Arrow + "Выход  из админки") || txt.equals(Emoji.Back_Arrow + "Назад"))
         {
             bot.sendChatActionTyping(msg_final);
@@ -437,15 +443,19 @@ public class MessageCheck
         else if (txt.equals(Emoji.Paperclip + "Файл расписания"))
         {
             User user = userDao.getUser(msg_final.getChatId());
+            List<Schedule>schedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
+            boolean haveCustomSchedule = false;
+            if (schedules.size() > 0)
+                haveCustomSchedule = true;
+
             bot.sendChatActionTyping(msg_final);
-            if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                    (user.getGroupId() == 0 || user.getGroupId() == null))
+            if (!haveCustomSchedule && (user.getGroupId() == 0 || user.getGroupId() == null))
             {
                 bot.sendMsg(msg_final, noSchedule, true);
             }
-            else
+            else if (!haveCustomSchedule && (user.getGroupId() != 0 && user.getGroupId() != null))
             {
-                String fileName = groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getFileName();
+                String fileName = groupDao.getGroup(user.getGroupId()).getFileName();
                 try
                 {
                     FileInputStream schedule = new FileInputStream("./schedule/" + fileName);
@@ -458,6 +468,11 @@ public class MessageCheck
                             "данное расписание. Возможно оно уже не используется или не еще не прикреплено к группе",
                             true);
                 }
+            }
+            else if (haveCustomSchedule && (user.getGroupId() == 0 || user.getGroupId() == null))
+            {
+                bot.sendChatActionDocument(msg_final);
+                bot.sendDocument(msg_final, "Расписание.json", jsonWorker.createJson(schedules));
             }
 
         }
@@ -499,31 +514,39 @@ public class MessageCheck
             Date date = c.getTime();
             String time = new SimpleDateFormat( "HH:mm", new Locale("ru")).format(date);
             Integer classNumber = additionalMessageHandling.getClassNumber(time);
-
+            String writeDate = new SimpleDateFormat( "dd MMMM yyyy", new Locale("ru")).format(date);
+            String day = new SimpleDateFormat("EEEE").format(date);
+            Integer numberOfWeek = additionalMessageHandling.getCurrentWeek(c);
             if (additionalMessageHandling.isSemester(c))
             {
-                Integer dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK))%7;
-                String day = new SimpleDateFormat("EEEE").format(date);
-                Integer numberOfWeek = additionalMessageHandling.getCurrentWeek(c);
-
-                if (classNumber > 0 && classNumber <= 8)
+                if (classNumber == 0)
                 {
-                    additionalMessageHandling.sendScheduleForTime(msg_final, dayOfWeek,
-                            numberOfWeek, classNumber, day);
+                    bot.sendChatActionTyping(msg_final);
+                    bot.sendMsg(msg_final, writeDate + "\n*" + additionalMessageHandling.firstUpperCase(day) + ", "
+                            + numberOfWeek + " неделя*\n\n" + "Сегодня уже нет пар!", true);
                 }
-                else
-                    bot.sendMsg(msg_final, "Сегодня пар уже нет!", true);
+                else if (classNumber >= 1 && classNumber <= 8)
+                {
+                    additionalMessageHandling.sendScheduleForTime(msg_final, classNumber, c);
+                }
+                else if (classNumber >= -7 && classNumber <= -1)
+                {
+                    bot.sendChatActionTyping(msg_final);
+                    bot.sendMsg(msg_final, writeDate + "\n*" + additionalMessageHandling.firstUpperCase(day) + ", "
+                            + numberOfWeek + " неделя*\n\n" + "Сейчас перерыв после " + -1*classNumber + " пары",
+                            true);
+                }
             }
             else if (additionalMessageHandling.isTestSession(c))
             {
-                bot.sendMsg(msg_final, "Сейчас идет зачетная сессия", true);
+                bot.sendMsg(msg_final, writeDate + "Сейчас идет зачетная сессия", true);
             }
             else if (additionalMessageHandling.isExamSession(c))
             {
-                bot.sendMsg(msg_final, "Сейчас идет экзаменационная сессия", true);
+                bot.sendMsg(msg_final, writeDate  + "Сейчас идет экзаменационная сессия", true);
             }
             else
-                bot.sendMsg(msg_final, "*Сейчас каникулы!*", true);
+                bot.sendMsg(msg_final, writeDate + "*Сейчас каникулы!*", true);
         }
         else if (txt.equals(Emoji.Pencil + "Следующая"))
         {
@@ -531,33 +554,38 @@ public class MessageCheck
             Calendar c = Calendar.getInstance();
             Date date = c.getTime();
             String time = new SimpleDateFormat( "HH:mm", new Locale("ru")).format(date);
-            Integer classNumber = additionalMessageHandling.getClassNumber(time) + 1;
+            Integer classNumber = additionalMessageHandling.getClassNumber(time);
+            String writeDate = new SimpleDateFormat( "dd MMMM yyyy", new Locale("ru")).format(date);
 
             if (additionalMessageHandling.isSemester(c))
             {
-                Integer dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK))%7;
-                String day = new SimpleDateFormat("EEEE").format(date);
-                Integer numberOfWeek = additionalMessageHandling.getCurrentWeek(c);
-
-                if (classNumber > 0 && classNumber <= 8)
+                if (classNumber == 0 || classNumber == 8)
                 {
-                    additionalMessageHandling.sendScheduleForTime(msg_final,
-                            dayOfWeek, numberOfWeek, classNumber, day);
+                    c.add(Calendar.DATE, 1);
+                    classNumber = 1;
+                    additionalMessageHandling.sendScheduleForTime(msg_final, classNumber, c);
                 }
-                else
-                    bot.sendMsg(msg_final, "Следующей пары сегодня уже не будет!",
-                            true);
+                else if (classNumber >= 1 && classNumber <= 7)
+                {
+                    classNumber++;
+                    additionalMessageHandling.sendScheduleForTime(msg_final, classNumber, c);
+                }
+                else if (classNumber >= -7 && classNumber <= -1)
+                {
+                    classNumber = -1*classNumber + 1;
+                    additionalMessageHandling.sendScheduleForTime(msg_final, classNumber, c);
+                }
             }
             else if (additionalMessageHandling.isTestSession(c))
             {
-                bot.sendMsg(msg_final, "Сейчас идет зачетная сессия", true);
+                bot.sendMsg(msg_final,writeDate + "Сейчас идет зачетная сессия", true);
             }
             else if (additionalMessageHandling.isExamSession(c))
             {
-                bot.sendMsg(msg_final, "Сейчас идет экзаменационная сессия", true);
+                bot.sendMsg(msg_final, writeDate + "Сейчас идет экзаменационная сессия", true);
             }
             else
-                bot.sendMsg(msg_final, "*Сейчас каникулы!*", true);
+                bot.sendMsg(msg_final, writeDate + "*Сейчас каникулы!*", true);
 
         }
         else if (txt.equals(Emoji.Fountain_Pen + "Определенная"))
@@ -818,7 +846,7 @@ public class MessageCheck
             }
             else if (schedule.size() != 0)
             {
-                bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: У вас уже" +
+                bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: У вас уже " +
                                 "установлено свое расписание. Вы точно хотите его удалить и создать новое? " +
                         "В ответ напишите \"Да\" или \"Нет\"");
             }
@@ -857,7 +885,7 @@ public class MessageCheck
             if (groupId != 0 && groupId != null)
             {
                 bot.sendMsg(msg_final, "К сожалению данная функция доступна только для " +
-                    "пользовтелей создавших свое расписание", true);
+                    "пользователей создавших свое расписание", true);
             }
             else if (schedule.size() == 0 && (groupId == 0 || groupId == null))
             {
@@ -917,7 +945,7 @@ public class MessageCheck
             else
             {
                 bot.sendChatActionTyping(msg_final);
-                bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ документ с " +
+                bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ json файл с " +
                         "пользовательским расписанием");
             }
         }
@@ -939,36 +967,67 @@ public class MessageCheck
         String txt = msg_final.getText();
         String replyTxt = msg_final.getReplyToMessage().getText();
 
-        if (replyTxt.contains(Emoji.Man + "Имя"))
+        if (replyTxt.contains("Вы уверены, что хотите отключиться от бота?"))
+        {
+            bot.sendChatActionTyping(msg_final);
+            switch (txt.trim().toLowerCase())
+            {
+                case "да":
+                    userDao.Delete(msg_final.getChatId());
+                    bot.sendMsg(msg_final, "Вы успешно отключены от бота. Ваши данные удалены. Больше вам не " +
+                            "будут приходить уведомления", true);
+                    break;
+                case "нет":
+                    bot.sendMsg(msg_final, "Вы не стали отключаться от бота", true);
+                    bot.sendChatActionTyping(msg_final);
+                    bot.sendStartKeyboard(msg_final, false);
+                    break;
+                default:
+                    bot.sendMsgReply(msg_final,"Вы ввели некорректный ответ. Вы уверены, что хотите " +
+                            "отключиться от бота? Если вы это сделаете, то ваши данные удаляться. В ответ пришлите " +
+                            "*Да* или *Нет*");
+                    break;
+            }
+        }
+        else if (replyTxt.contains(Emoji.Man + "Имя"))
         {
             bot.sendChatActionTyping(msg_final);
             additionalMessageHandling.getTeacherBySurname(txt, msg_final);
             bot.sendChatActionTyping(msg_final);
             bot.sendTeacherKeyboard(msg_final, false);
         }
-        if (replyTxt.contains(Emoji.Memo + "Контакты"))
+        else if (replyTxt.contains(Emoji.Memo + "Контакты"))
         {
             bot.sendChatActionTyping(msg_final);
             additionalMessageHandling.getTeacherInfo(txt, msg_final);
             bot.sendChatActionTyping(msg_final);
             bot.sendTeacherKeyboard(msg_final, false);
         }
-        else if (replyTxt.contains(Emoji.Wrench + "Установить группу"))
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains(Emoji.Wrench + "Введите " +
+                "группу в формате XXXX-YY-YY"))
         {
             bot.sendChatActionTyping(msg_final);
-            if (groupDao.getGroupForName(txt).size() > 0)
+            if (txt.equals(userDao.getUser(msg_final.getChatId()).getGroupName()))
             {
-                Integer groupId = groupDao.getGroupForName(txt).get(0).getId();
-                userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), groupId);
-                bot.sendMsg(msg_final, "Вы успешно прикреплены к группе " +
-                        groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName(), true);
+                bot.sendMsg(msg_final, "Вы уже привязаны к этой группе", true);
+                bot.sendSettingsKeyboard(msg_final, false);
             }
             else
             {
-                bot.sendMsg(msg_final, "Введенной группы нет в базе. Возможно вы ввели " +
-                        "название с ошибкой или данную группу еще не добавили в базу", true);
+                if (groupDao.getGroupForName(txt).size() > 0)
+                {
+                    Integer groupId = groupDao.getGroupForName(txt).get(0).getId();
+                    userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), groupId);
+                    bot.sendMsg(msg_final, "Вы успешно прикреплены к группе " +
+                            groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName(), true);
+                }
+                else
+                {
+                    bot.sendMsg(msg_final, "Введенной группы нет в базе. Возможно вы ввели " +
+                            "название с ошибкой или данную группу еще не добавили в базу", true);
+                }
+                bot.sendSettingsKeyboard(msg_final, false);
             }
-            bot.sendSettingsKeyboard(msg_final, false);
         }
         else if (replyTxt.contains(Emoji.Wrench + "Установить группу") & replyTxt.contains("У вас установлено " +
                 "пользовательское расписание"))
@@ -1053,7 +1112,6 @@ public class MessageCheck
                 try
                 {
                     time = new SimpleDateFormat("dd.MM.yyyy").parse(txt);
-
                 }
                 catch (ParseException e) {
                     Main._Log.warn("Не удалось поместить дату " + e.toString() + "\n");
@@ -1073,40 +1131,41 @@ public class MessageCheck
         }
         else if (replyTxt.contains("Введите номер пары"))
         {
-            bot.sendChatActionTyping(msg_final);
-            Calendar c = Calendar.getInstance();
-            Date date = c.getTime();
-            Integer classNumber = Integer.parseInt(txt);
-            String day = new SimpleDateFormat("EEEE").format(date);
-
-            if (additionalMessageHandling.isSemester(c))
+            if (txt.trim().matches("[1-8]"))
             {
-                Integer dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK)) % 7;
-                Integer numberOfWeek = 1;
+                bot.sendChatActionTyping(msg_final);
+                Calendar c = Calendar.getInstance();
+                Integer classNumber = Integer.parseInt(txt);
+                Date date = c.getTime();
+                String writeDate = new SimpleDateFormat( "dd MMMM yyyy", new Locale("ru")).format(date);
 
-                if (classNumber > 0 && classNumber <= 8)
+                if (additionalMessageHandling.isSemester(c))
                 {
-                    additionalMessageHandling.sendScheduleForTime(msg_final, dayOfWeek,
-                            numberOfWeek, classNumber, day);
+                    additionalMessageHandling.sendScheduleForTime(msg_final, classNumber, c);
                     bot.sendChatActionTyping(msg_final);
+                    bot.sendClassKeyboard(msg_final, false);
+                }
+                else if (additionalMessageHandling.isTestSession(c))
+                {
+                    bot.sendMsg(msg_final, writeDate + "Сейчас идет зачетная сессия", true);
+                    bot.sendClassKeyboard(msg_final, false);
+                }
+                else if (additionalMessageHandling.isExamSession(c))
+                {
+                    bot.sendMsg(msg_final, writeDate + "Сейчас идет экзаменационная сессия", true);
                     bot.sendClassKeyboard(msg_final, false);
                 }
                 else
                 {
-                    bot.sendMsgReply(msg_final, "Такой пары *не бывает*! Введите " +
-                            "номер пары");
+                    bot.sendMsg(msg_final, writeDate + "*Сейчас каникулы!*", true);
+                    bot.sendClassKeyboard(msg_final, false);
                 }
             }
-            else if (additionalMessageHandling.isTestSession(c))
-            {
-                bot.sendMsg(msg_final, "Сейчас идет зачетная сессия", true);
-            }
-            else if (additionalMessageHandling.isExamSession(c))
-            {
-                bot.sendMsg(msg_final, "Сейчас идет экзаменационная сессия", true);
-            }
             else
-                bot.sendMsg(msg_final, "*Сейчас каникулы!*", true);
+            {
+                bot.sendChatActionTyping(msg_final);
+                bot.sendMsgReply(msg_final, "Вы ввели номер пары *неверно*! Введите номер пары");
+            }
         }
         else if (replyTxt.contains(Emoji.Card_Index + "Регистрация:\n"))
         {
@@ -1737,7 +1796,7 @@ public class MessageCheck
 
             }
         }
-        else if (replyTxt.contains(Emoji.Scroll + "Создать расписание") & replyTxt.contains("Через точку с запятой"))
+        else if (replyTxt.contains(Emoji.Scroll + "Создать расписание") & replyTxt.contains("Через точку с запятой")) //TODO: проверить при вводе пустых значений
         {
             bot.sendChatActionTyping(msg_final);
             int length;
@@ -2037,7 +2096,7 @@ public class MessageCheck
                 bot.sendMsgReply(msg_final,Emoji.Scroll + "Обновить расписание: " +
                         "Вы ввели слишком много данных. " + refreshUserScheduleText);
         }
-        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание: У вас уже установлено свое расписание"))
+        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") && replyTxt.contains("У вас уже установлено свое расписание"))
         {
             bot.sendChatActionTyping(msg_final);
             switch (txt.trim().toLowerCase())
@@ -2046,7 +2105,7 @@ public class MessageCheck
                     scheduleDao.DeleteUserSchedule(msg_final.getChatId());
                     bot.sendMsg(msg_final, "Ваше расписание успешно удалено", true);
                     bot.sendChatActionTyping(msg_final);
-                    bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ документ с " +
+                    bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ json файл с " +
                             "пользовательским расписанием");
                     break;
                 case "нет":
@@ -2061,7 +2120,8 @@ public class MessageCheck
 
             }
         }
-        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание: У вас уже установлено расписание группы"))
+        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") && replyTxt.contains("У вас уже " +
+                "установлено расписание группы"))
         {
             bot.sendChatActionTyping(msg_final);
             switch (txt.trim().toLowerCase())
@@ -2070,7 +2130,7 @@ public class MessageCheck
                     userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), null);
                     bot.sendMsg(msg_final, "Вы успешно открепленны от группы", true);
                     bot.sendChatActionTyping(msg_final);
-                    bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ документ с " +
+                    bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ json файл с " +
                             "пользовательским расписанием");
                     break;
                 case "нет":
@@ -2082,8 +2142,14 @@ public class MessageCheck
                             "Вы ввели некорректный ответ. Введите *Да* или *Нет*. У вас уже установлено расписание " +
                             "группы. Вы точно хотите его удалить и загрузить новое?");
                     break;
-
             }
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") && replyTxt.contains("Отправьте в ответ " +
+                "json файл"))
+        {
+            bot.sendChatActionTyping(msg_final);
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Для загрузки необходимо " +
+                    "отправить файл. Отправьте в ответ json файл с пользовательским расписанием");
         }
     }
 }

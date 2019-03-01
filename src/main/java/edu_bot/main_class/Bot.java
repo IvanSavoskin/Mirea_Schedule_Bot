@@ -25,6 +25,8 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.*;
 import java.util.*;
 
+//TODO: Поставить заглушки при попытке отправить документ на сообщение, где требуется текст
+
 @Component
     public class Bot extends TelegramLongPollingBot
     {
@@ -72,12 +74,15 @@ import java.util.*;
             {
                 sendMsg(msg, "Очень мило, что вы прислали нам стикер, но к сожалению он не являются командой." +
                         " Но чтобы вам было не так грустно, мы отправим вам стикер в ответ" + Emoji.Smiling_Face, true);
+                sendChatActionTyping(msg);
                 sendSticker(msg, Sticker.randomSticker());
+                sendChatActionTyping(msg);
+                sendStartKeyboard(msg, false);
             }
             else if (update.hasMessage() && update.getMessage().hasDocument())
             {
-                if (msg.getReplyToMessage().getText().contains(Emoji.Scroll + "Загрузить расписание: Отправьте в ответ " +
-                        "документ"))
+                if (msg.getReplyToMessage().getText().contains(Emoji.Scroll + "Загрузить расписание:") &&
+                        msg.getReplyToMessage().getText().contains("Отправьте в ответ json файл"))
                 {
                     String uploadedFileId = update.getMessage().getDocument().getFileId();
                     GetFile uploadedFile = new GetFile();
@@ -91,21 +96,26 @@ import java.util.*;
                         json = scanner.useDelimiter("\\A").next();
                         scanner.close();
                     }
-                    catch (TelegramApiException c)
+                    catch (TelegramApiException e)
                     {
-                        Main._Log.error("Не удалось получить путь файла: " + c);
+                        Main._Log.error("Не удалось получить путь файла: " + e);
                         sendChatActionTyping(msg);
-                        sendMsg(msg, "Произошла ошибка, попробуйте еще раз позднее", true);
-                        sendChatActionTyping(msg);
-                        sendCustomScheduleKeyboard(msg, false);
+                        sendMsgReply(msg, Emoji.Scroll + "Загрузить расписание: Произошла ошибка. Отправьте в " +
+                                "ответ json файл с пользовательским расписанием");
                     }
-                    catch (IOException c)
+                    catch (IOException e)
                     {
-                        Main._Log.error("Не удалось получить строку из файла: " + c);
+                        Main._Log.error("Не удалось получить строку из файла: " + e);
                         sendChatActionTyping(msg);
-                        sendMsg(msg, "Произошла ошибка, попробуйте еще раз позднее", true);
+                        sendMsgReply(msg, Emoji.Scroll + "Загрузить расписание: Произошла ошибка. Отправьте в " +
+                                "ответ json файл с пользовательским расписанием");
+                    }
+                    catch (NoSuchElementException e)
+                    {
+                        Main._Log.error("Не удалось распарсить файл: " + e);
                         sendChatActionTyping(msg);
-                        sendCustomScheduleKeyboard(msg, false);
+                        sendMsgReply(msg, Emoji.Scroll + "Загрузить расписание: Возможно вы загрузили " +
+                                "некорректный файл. Отправьте в ответ json файл с пользовательским расписанием");
                     }
 
                     if (jsonWorker.loadJson(json, msg.getChatId()))
@@ -497,8 +507,8 @@ import java.util.*;
                     "*Выберите одну из опций:*\n" +
                     Emoji.Wrench + "*Установить группу:* Задать группу, расписание которой вам будет приходить\n" +
                     Emoji.Wrench + "*Удалить группу:* Удалить группу, расписание которой вам приходит\n" +
-                    Emoji.Wrench + "*Текущая группа:* Вывод навзания группы, расписание которой вам приходит\n" +
-                    Emoji.Scroll + "*Свое расписание:* создать свое распсиание\n" +
+                    Emoji.Wrench + "*Текущая группа:* Вывод названия группы, расписание которой вам приходит\n" +
+                    Emoji.Scroll + "*Свое расписание:* создать свое расписание\n" +
                     Emoji.Back_Arrow + "*Назад:* В стартовое меню\n" +
                     Emoji.Cross_Mark + "*Закрыть:* Закрывает меню");
 
@@ -568,7 +578,7 @@ import java.util.*;
                     Emoji.Page_With_Curl + "*Расписание:* Меню, в котором можно получить расписание\n" +
                     Emoji.World_Map + "*Пара:* Меню, в котором вы можете узнать, где проходит пара\n" +
                     Emoji.Man_Student + "*Преподаватель:* Меню, в котором вы можете узнать информацию о преподавателях\n" +
-                    Emoji.Watch + "*Время:* Меню, в котором можно узнать все, что связано с врменными периодами\n" +
+                    Emoji.Watch + "*Время:* Меню, в котором можно узнать все, что связано с временными периодами\n" +
                     Emoji.Back_Arrow + "*Назад:* В стартовое меню\n" +
                     Emoji.Cross_Mark + "*Закрыть:* Закрывает меню");
 

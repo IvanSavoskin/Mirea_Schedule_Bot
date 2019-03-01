@@ -10,11 +10,12 @@ public class User
     private String groupName;
     private List<Schedule> schedules;
 
-    public User(Long chatId, String chatName, Integer groupId)
+    public User(Long chatId, String chatName, Integer groupId, String groupName)
     {
         this.chatId = chatId;
         this.chatName = chatName;
         this.groupId = groupId;
+        this.groupName = groupName;
     }
 
     public User(Long chatId, String chatName, List<Schedule> schedules)

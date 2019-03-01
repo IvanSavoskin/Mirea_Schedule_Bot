@@ -24,7 +24,8 @@ public class UserJdbc implements UserDao
     @Override
     public User getUser(Long chatId)
     {
-        return jdbcTemplate.queryForObject("SELECT * FROM \"User\" WHERE \"chatId\" = ?", this::mapUser, chatId);
+        return jdbcTemplate.queryForObject("SELECT * FROM \"User\" JOIN \"Group\" ON " +
+                "\"User\".\"groupId\"=\"Group\".\"id\" WHERE \"chatId\" = ?", this::mapUser, chatId);
     }
 
     @Override
@@ -60,7 +61,7 @@ public class UserJdbc implements UserDao
     private User mapUser(ResultSet rs, int row) throws SQLException
     {
         return new User(rs.getLong("chatId"), rs.getString("chatName"),
-                rs.getInt("groupId"));
+                rs.getInt("groupId"), rs.getString("groupName"));
     }
 
     @Override
