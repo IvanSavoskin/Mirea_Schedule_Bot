@@ -22,17 +22,17 @@ public class Subject
         this.teacherId = teacherId;
     }
 
-    public Subject(int id, String subjectName)
-    {
-        this.id = id;
-        this.subjectName = subjectName;
-    }
-
     public Subject(String subjectName, int teacherId, SubjectType subjectTypes)
     {
         this.subjectName = subjectName;
         this.teacherId = teacherId;
         this.subjectTypes = subjectTypes;
+    }
+
+    public Subject(int id, String subjectName)
+    {
+        this.id = id;
+        this.subjectName = subjectName;
     }
 
     public Subject(String subjectName)

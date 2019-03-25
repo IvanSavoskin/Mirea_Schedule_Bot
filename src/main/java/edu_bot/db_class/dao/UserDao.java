@@ -17,16 +17,16 @@ public interface UserDao
 
     User getUserForOutput(Long chatId, Integer numberOfWeek, Integer dayOfWeek);
 
-    void Insert(Long chatId, String chatName, Integer groupId);
+    void insert(User user);
 
-    void Merge(Long chatId, String chatName, Integer groupId);
+    void merge(User user);
 
-    void Update(Long chatId, String chatName, Integer groupId);
+    void update(User user);
 
-    void Delete(Long chatId);
+    void delete(Long chatId);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }

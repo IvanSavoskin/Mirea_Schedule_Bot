@@ -7,15 +7,18 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class SubjectTypeJdbc implements SubjectTypeDao
 {
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<SubjectType> subjectTypeConsumer;
 
-    public SubjectTypeJdbc(JdbcTemplate jdbcTemplate)
+    public SubjectTypeJdbc(JdbcTemplate jdbcTemplate, Consumer<SubjectType> subjectTypeConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
+        this.subjectTypeConsumer = subjectTypeConsumer;
     }
 
     @Override
@@ -60,49 +63,40 @@ public class SubjectTypeJdbc implements SubjectTypeDao
     }
 
     @Override
-    public void Insert(Integer id, Integer subjectId, String typeName)
+    public void insert(SubjectType subjectType)
     {
         jdbcTemplate.update("INSERT INTO \"SubjectType\" (\"id\", \"typeName\")  VALUES (?, ?)",
-                id, typeName);
+                subjectType.getId(), subjectType.getTypeName());
 
     }
 
     @Override
-    public void Merge(Integer id, Integer subjectId, String typeName)
+    public void merge(SubjectType subjectType)
     {
-        jdbcTemplate.update("MERGE INTO \"SubjectType\" (\"id\", \"typeName\") KEY (\"id\")" +
-                " VALUES (?, ?)", id, typeName);
-        }
-
-    /*@Override
-    public void Merge(Integer id, Integer subjectId, String typeName)
-    {
-        jdbcTemplate.update("INSERT INTO \"SubjectType\" (\"id\", \"typeName\") VALUES (?, ?) ON CONFLICT (\"id\")" +
-                "DO UPDATE SET \"typeName\" = ?", id, typeName, typeName);
-
-    }*/
+        subjectTypeConsumer.accept(subjectType);
+    }
 
     @Override
-    public void Update(Integer id, Integer subjectId, String typeName)
+    public void update(SubjectType subjectType)
     {
         jdbcTemplate.update("UPDATE \"SubjectType\" SET \"typeName\" = ? WHERE \"id\" = ?",
-                typeName, id);
+                subjectType.getTypeName(), subjectType.getId());
     }
 
     @Override
-    public void Delete(Integer id)
+    public void delete(Integer id)
     {
         jdbcTemplate.update("DELETE FROM \"SubjectType\" WHERE \"id\" = ?", id);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"SubjectType\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"SubjectType\"", Integer.class);
     }

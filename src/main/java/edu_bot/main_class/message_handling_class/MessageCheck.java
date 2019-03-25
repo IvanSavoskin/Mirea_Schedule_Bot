@@ -11,11 +11,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
+import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -342,12 +346,11 @@ public class MessageCheck
             List<Schedule> schedule = scheduleDao.getSchedulesForUser(msg_final.getChatId());
             int size = schedule.size();
             bot.sendChatActionTyping(msg_final);
-            if (groupId != null && groupId != 0)
-                bot.sendMsg(msg_final,
-                        groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName(), true);
-            else if (size != 0)
+            if (groupId != -1 && size == 0)
+                bot.sendMsg(msg_final, user.getGroupName(), true);
+            else if (size > 0 && groupId == -1)
                 bot.sendMsg(msg_final,"У вас установлено пользовательское расписание", true);
-            else if (size == 0 & (groupId != null && groupId != 0))
+            else if (size == 0 && groupId == -1)
                 bot.sendMsg(msg_final,"У вас еще не установлена группа!", true);
         }
         else if (txt.equals(Emoji.Man + "Имя"))
@@ -363,17 +366,17 @@ public class MessageCheck
             List<Schedule> schedule = scheduleDao.getSchedulesForUser(msg_final.getChatId());
             int size = schedule.size();
             bot.sendChatActionTyping(msg_final);
-            if ((groupId == null || groupId == 0) && size == 0)
-                bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: " +
+            if (size == 0 && groupId == -1)
+                bot.sendMsgReply(msg_final, Emoji.Wrench + "Установить группу: " +
                         "Введите группу в формате XXXX-YY-YY (X - буквы, Y - цифры)");
-            else if (groupId != null && groupId != 0)
-                bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: У вас уже " +
+            else if (groupId != -1 && size == 0)
+                bot.sendMsgReply(msg_final, Emoji.Wrench + "Установить группу: У вас уже " +
                         "установлена группа " +
                         groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName() +
                         ". Вы точно хотите сменить группу? (В ответ пришлите \"Да\", если хотите сменить " +
                         "группу и \"Нет\", если хотите оставить ее)");
-            else if (size != 0)
-                bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: У вас " +
+            else if (size > 0 && groupId == -1)
+                bot.sendMsgReply(msg_final, Emoji.Wrench + "Установить группу: У вас " +
                         "установлено пользовательское расписание, вы уверены, что хотите его удалить и установить " +
                         "расписание группы? (В ответ пришлите \"Да\", если хотите удалить расписание и \"Нет\", " +
                         "если хотите оставить его)");
@@ -381,26 +384,36 @@ public class MessageCheck
         else if (txt.equals(Emoji.Wrench + "Удалить группу"))
         {
             bot.sendChatActionTyping(msg_final);
-            if ((userDao.getUser(msg_final.getChatId()).getGroupId() == null) ||
-                    (userDao.getUser(msg_final.getChatId()).getGroupId() == 0))
+            User user = userDao.getUser(msg_final.getChatId());
+            Integer groupId = user.getGroupId();
+            List<Schedule> schedule = scheduleDao.getSchedulesForUser(msg_final.getChatId());
+            int size = schedule.size();
+            if (size == 0 && groupId == -1)
             {
                 bot.sendMsg(msg_final,"Вы не привязаны к какой-либо группе", true);
                 bot.sendSettingsKeyboard(msg_final, false);
             }
-            else if ((userDao.getUser(msg_final.getChatId()).getGroupId() != null) &&
-                    (userDao.getUser(msg_final.getChatId()).getGroupId() != 0))
-                bot.sendMsgReply(msg_final,Emoji.Wrench + "Удалить группу: У вас " +
-                        "установлена группа " +
-                        groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName() +
-                        ". Вы точно хотите удалить группу? (В ответ пришлите \"Да\", если хотите удалить " +
-                        "группу и \"Нет\", если хотите оставить ее)");
+            else if (groupId != -1 && size == 0)
+            {
+                bot.sendMsgReply(msg_final, Emoji.Wrench + "Удалить группу: У вас " +
+                        "установлена группа " + user.getGroupName() + ". Вы точно хотите удалить группу? (В ответ" +
+                        " пришлите \"Да\", если хотите удалить группу и \"Нет\", если хотите оставить ее)");
+            }
+            else if (size > 0 && groupId == -1)
+            {
+                bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: У вас " +
+                        "установлено пользовательское расписание. Для того, чтобы удалить группу, необходимо ее " +
+                        "сначала прикрепить к своему профилю");
+            }
         }
         else if (txt.equals(Emoji.Open_Book + "Сегодня"))
         {
             User user = userDao.getUser(msg_final.getChatId());
+            Integer groupId = user.getGroupId();
             bot.sendChatActionTyping(msg_final);
-            if (scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0 &&
-                    (user.getGroupId() == 0 || user.getGroupId() == null))
+            List<Schedule> schedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
+            int size = schedules.size();
+            if (size == 0 && groupId == -1)
             {
                 bot.sendMsg(msg_final, noSchedule, true);
             }
@@ -413,9 +426,9 @@ public class MessageCheck
         else if (txt.equals(Emoji.Green_Book + "Завтра"))
         {
             User user = userDao.getUser(msg_final.getChatId());
+            int groupId = user.getGroupId();
             bot.sendChatActionTyping(msg_final);
-            if (scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0 &&
-                    (user.getGroupId() == 0 || user.getGroupId() == null))
+            if (scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0 && groupId == -1)
             {
                 bot.sendMsg(msg_final, noSchedule, true);
             }
@@ -429,9 +442,9 @@ public class MessageCheck
         else if (txt.equals(Emoji.Orange_Book + "Дата"))
         {
             User user = userDao.getUser(msg_final.getChatId());
+            int groupId = user.getGroupId();
             bot.sendChatActionTyping(msg_final);
-            if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                    (user.getGroupId() == 0 || user.getGroupId() == null))
+            if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) && groupId == -1)
             {
                 bot.sendMsg(msg_final, noSchedule, true);
             }
@@ -443,17 +456,18 @@ public class MessageCheck
         else if (txt.equals(Emoji.Paperclip + "Файл расписания"))
         {
             User user = userDao.getUser(msg_final.getChatId());
+            int groupId = user.getGroupId();
             List<Schedule>schedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
             boolean haveCustomSchedule = false;
             if (schedules.size() > 0)
                 haveCustomSchedule = true;
 
             bot.sendChatActionTyping(msg_final);
-            if (!haveCustomSchedule && (user.getGroupId() == 0 || user.getGroupId() == null))
+            if (!haveCustomSchedule && groupId == -1)
             {
                 bot.sendMsg(msg_final, noSchedule, true);
             }
-            else if (!haveCustomSchedule && (user.getGroupId() != 0 && user.getGroupId() != null))
+            else if (!haveCustomSchedule && groupId != -1)
             {
                 String fileName = groupDao.getGroup(user.getGroupId()).getFileName();
                 try
@@ -465,22 +479,22 @@ public class MessageCheck
                 {
                     Main._Log.warn("Не удалось отправить файл расписания:\n" + e);
                     bot.sendMsg(msg_final, "К сожалению в данный момент невозможно скачать " +
-                            "данное расписание. Возможно оно уже не используется или не еще не прикреплено к группе",
+                                    "данное расписание. Возможно оно уже не используется или не еще не прикреплено к группе",
                             true);
                 }
             }
-            else if (haveCustomSchedule && (user.getGroupId() == 0 || user.getGroupId() == null))
+            else if (haveCustomSchedule && groupId == -1)
             {
                 bot.sendChatActionDocument(msg_final);
                 bot.sendDocument(msg_final, "Расписание.json", jsonWorker.createJson(schedules));
             }
-
         }
         else if (txt.equals(Emoji.Closed_Book + "Неделя"))
         {
             User user = userDao.getUser(msg_final.getChatId());
-            if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                    (user.getGroupId() == 0 || user.getGroupId() == null))
+            int groupId = user.getGroupId();
+
+            if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) && groupId == -1)
             {
                 bot.sendMsg(msg_final, noSchedule, true);
             }
@@ -492,8 +506,8 @@ public class MessageCheck
 
                 for (int i = 1; i <= 7; i++)
                 {
-                        additionalMessageHandling.preparationScheduleSend(msg_final, c);
-                        c.add(Calendar.DATE, 1);
+                    additionalMessageHandling.preparationScheduleSend(msg_final, c);
+                    c.add(Calendar.DATE, 1);
                 }
             }
         }
@@ -515,7 +529,7 @@ public class MessageCheck
             String time = new SimpleDateFormat( "HH:mm", new Locale("ru")).format(date);
             Integer classNumber = additionalMessageHandling.getClassNumber(time);
             String writeDate = new SimpleDateFormat( "dd MMMM yyyy", new Locale("ru")).format(date);
-            String day = new SimpleDateFormat("EEEE").format(date);
+            String day = new SimpleDateFormat( "EEEE", new Locale("ru")).format(date);
             Integer numberOfWeek = additionalMessageHandling.getCurrentWeek(c);
             if (additionalMessageHandling.isSemester(c))
             {
@@ -533,7 +547,7 @@ public class MessageCheck
                 {
                     bot.sendChatActionTyping(msg_final);
                     bot.sendMsg(msg_final, writeDate + "\n*" + additionalMessageHandling.firstUpperCase(day) + ", "
-                            + numberOfWeek + " неделя*\n\n" + "Сейчас перерыв после " + -1*classNumber + " пары",
+                                    + numberOfWeek + " неделя*\n\n" + "Сейчас перерыв после " + -1*classNumber + " пары",
                             true);
                 }
             }
@@ -625,7 +639,8 @@ public class MessageCheck
                 EducationDate educationDate = educationDateDao.getEducationDate();
                 Date testSessionStartDate = educationDate.getTestSessionStartDate();
                 Date examSessionStartDate = educationDate.getExamSessionStartDate();
-                if (testSessionStartDate != null && examSessionStartDate != null)
+                if (testSessionStartDate != null && examSessionStartDate != null && testSessionStartDate.after(currentDate)
+                        && examSessionStartDate.after(currentDate))
                 {
                     int differenceTestSession = Math.abs((int)((currentDate.getTime()/(24*60*60*1000))
                             - (int)(testSessionStartDate.getTime()/(24*60*60*1000)))) + 1;
@@ -658,7 +673,8 @@ public class MessageCheck
                         bot.sendMsg(msg_final, "До экзаменационной сессии " +
                                 differenceExamSession + " дней", false);
                 }
-                else if (testSessionStartDate != null && examSessionStartDate == null)
+                else if (testSessionStartDate != null && testSessionStartDate.after(currentDate)
+                        && examSessionStartDate == null)
                 {
                     int differenceTestSession = Math.abs((int)((currentDate.getTime()/(24*60*60*1000))
                             - (int)(testSessionStartDate.getTime()/(24*60*60*1000)))) + 1;
@@ -679,7 +695,7 @@ public class MessageCheck
                     bot.sendMsg(msg_final, "Дата начала экзаменационной сессии еще " +
                             "не известна", false);
                 }
-                else if (testSessionStartDate == null && examSessionStartDate != null)
+                else if (testSessionStartDate == null && examSessionStartDate != null && examSessionStartDate.after(currentDate))
                 {
                     bot.sendMsg(msg_final, "Дата начала зачетной сессии еще не известна",
                             false);
@@ -835,11 +851,11 @@ public class MessageCheck
             List<Schedule> schedule = scheduleDao.getSchedulesForUser(msg_final.getChatId());
 
             bot.sendChatActionTyping(msg_final);
-            if ((groupId.equals(null) || groupId.equals(0)) && schedule.size() == 0)
+            if (groupId == -1 && schedule.size() == 0)
             {
                 bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: " + addUserScheduleText);
             }
-            else if (!groupId.equals(0) && !groupId.equals(null))
+            else if (groupId != -1)
             {
                 bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: У вас " +
                         "установлена группа. Вы точно хотите ее удалить? В ответ напишите \"Да\" или \"Нет\"");
@@ -847,7 +863,7 @@ public class MessageCheck
             else if (schedule.size() != 0)
             {
                 bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: У вас уже " +
-                                "установлено свое расписание. Вы точно хотите его удалить и создать новое? " +
+                        "установлено свое расписание. Вы точно хотите его удалить и создать новое? " +
                         "В ответ напишите \"Да\" или \"Нет\"");
             }
         }
@@ -858,13 +874,13 @@ public class MessageCheck
             List<Schedule> schedule = scheduleDao.getSchedulesForUser(msg_final.getChatId());
 
             bot.sendChatActionTyping(msg_final);
-            if ((groupId.equals(null) || groupId.equals(0)) && schedule.size() == 0)
+            if (groupId == -1 && schedule.size() == 0)
             {
                 bot.sendMsg(msg_final, Emoji.Scroll + "Обновить расписание: К " +
                         "сожалению вы еще не создали свое распсиание", true);
                 bot.sendChatActionTyping(msg_final);
             }
-            else if (!groupId.equals(0) && !groupId.equals(null))
+            else if (groupId != -1)
             {
                 bot.sendMsg(msg_final, Emoji.Scroll + "Обновить расписание: К " +
                         "сожалению вы еще не создали свое распсиание", true);
@@ -882,15 +898,15 @@ public class MessageCheck
             List<Schedule> schedule = scheduleDao.getSchedulesForUser(msg_final.getChatId());
 
             bot.sendChatActionTyping(msg_final);
-            if (groupId != 0 && groupId != null)
+            if (groupId != -1)
             {
                 bot.sendMsg(msg_final, "К сожалению данная функция доступна только для " +
-                    "пользователей создавших свое расписание", true);
+                        "пользователей создавших свое расписание", true);
             }
-            else if (schedule.size() == 0 && (groupId == 0 || groupId == null))
+            else if (schedule.size() == 0 && groupId == -1)
             {
                 bot.sendMsg(msg_final, "К вашему профилю не подключены расписания. Данная функция доступна " +
-                        "только для пользовательских расписаний. Вы можете установить свое расписание в меню настроек",
+                                "только для пользовательских расписаний. Вы можете установить свое расписание в меню настроек",
                         true);
             }
             else if (schedule.size() != 0)
@@ -906,7 +922,7 @@ public class MessageCheck
             List<Schedule> schedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
 
             bot.sendChatActionTyping(msg_final);
-            if (schedules.size() == 0 && groupId != 0 && groupId != null)
+            if (schedules.size() == 0 && groupId != -1)
             {
                 schedules = scheduleDao.getSchedulesForGroup(groupId);
                 bot.sendChatActionTyping(msg_final);
@@ -935,7 +951,7 @@ public class MessageCheck
                         "установлено свое расписание. Вы точно хотите его удалить и загрузить новое из файла? " +
                         "В ответ напишите \"Да\" или \"Нет\"");
             }
-            else if (schedules.size() == 0 && groupId != 0 && groupId != null)
+            else if (schedules.size() == 0 && groupId != -1)
             {
                 bot.sendChatActionTyping(msg_final);
                 bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: У вас уже " +
@@ -973,7 +989,7 @@ public class MessageCheck
             switch (txt.trim().toLowerCase())
             {
                 case "да":
-                    userDao.Delete(msg_final.getChatId());
+                    userDao.delete(msg_final.getChatId());
                     bot.sendMsg(msg_final, "Вы успешно отключены от бота. Ваши данные удалены. Больше вам не " +
                             "будут приходить уведомления", true);
                     break;
@@ -1003,11 +1019,12 @@ public class MessageCheck
             bot.sendChatActionTyping(msg_final);
             bot.sendTeacherKeyboard(msg_final, false);
         }
-        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains(Emoji.Wrench + "Введите " +
-                "группу в формате XXXX-YY-YY"))
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains("Введите группу в " +
+                "формате XXXX-YY-YY"))
         {
             bot.sendChatActionTyping(msg_final);
-            if (txt.equals(userDao.getUser(msg_final.getChatId()).getGroupName()))
+            User user = userDao.getUser(msg_final.getChatId());
+            if (txt.equals(user.getGroupName()))
             {
                 bot.sendMsg(msg_final, "Вы уже привязаны к этой группе", true);
                 bot.sendSettingsKeyboard(msg_final, false);
@@ -1017,9 +1034,10 @@ public class MessageCheck
                 if (groupDao.getGroupForName(txt).size() > 0)
                 {
                     Integer groupId = groupDao.getGroupForName(txt).get(0).getId();
-                    userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), groupId);
+                    user.setGroupId(groupId);
+                    userDao.merge(user);
                     bot.sendMsg(msg_final, "Вы успешно прикреплены к группе " +
-                            groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName(), true);
+                            groupDao.getGroup(user.getGroupId()).getGroupName(), true);
                 }
                 else
                 {
@@ -1029,14 +1047,14 @@ public class MessageCheck
                 bot.sendSettingsKeyboard(msg_final, false);
             }
         }
-        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") & replyTxt.contains("У вас установлено " +
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains("У вас установлено " +
                 "пользовательское расписание"))
         {
             bot.sendChatActionTyping(msg_final);
             switch (txt.toLowerCase())
             {
                 case("да"):
-                    scheduleDao.DeleteUserSchedule(msg_final.getChatId());
+                    scheduleDao.deleteUserSchedule(msg_final.getChatId());
                     bot.sendMsg(msg_final, "Пользовательское расписание *удалено*",
                             true);
                     bot.sendChatActionTyping(msg_final);
@@ -1054,7 +1072,7 @@ public class MessageCheck
             }
             bot.sendSettingsKeyboard(msg_final, false);
         }
-        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") & replyTxt.contains("У вас уже установлена группа"))
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains("У вас уже установлена группа"))
         {
             bot.sendChatActionTyping(msg_final);
             switch (txt.trim().toLowerCase())
@@ -1077,28 +1095,28 @@ public class MessageCheck
                     break;
             }
         }
-        else if (replyTxt.contains(Emoji.Wrench + "Удалить группу") & replyTxt.contains("Вы точно хотите удалить группу?"))
+        else if (replyTxt.contains(Emoji.Wrench + "Удалить группу") && replyTxt.contains("Вы точно хотите удалить группу?"))
         {
             bot.sendChatActionTyping(msg_final);
+            User user = userDao.getUser(msg_final.getChatId());
             switch (txt.trim().toLowerCase())
             {
                 case("да"):
-                    userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), null);
+                    user.setGroupId(-1);
+                    userDao.merge(user);
                     bot.sendMsg(msg_final, "Вы успешно отсоеденены от группы!", true);
                     bot.sendChatActionTyping(msg_final);
                     bot.sendSettingsKeyboard(msg_final, false);
                     break;
                 case("нет"):
-                    bot.sendMsg(msg_final, "Вы оставили расписание группы " +
-                            groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName(), true);
+                    bot.sendMsg(msg_final, "Вы оставили расписание группы " + user.getGroupName(), true);
                     bot.sendChatActionTyping(msg_final);
                     bot.sendSettingsKeyboard(msg_final, false);
                     break;
                 default:
                     bot.sendMsgReply(msg_final,Emoji.Wrench + "Удалить группу: Вы ввели " +
                             "некорректный ответ. Введите \"Да\" или \"Нет\". У вас установлена группа " +
-                            groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName() +
-                            ". Вы точно хотите удалить группу?");
+                            user.getGroupName() + ". Вы точно хотите удалить группу?");
                     break;
             }
         }
@@ -1169,21 +1187,25 @@ public class MessageCheck
         }
         else if (replyTxt.contains(Emoji.Card_Index + "Регистрация:\n"))
         {
+            List<Group> groups = groupDao.getGroupForName(txt);
+            int size = groups.size();
             bot.sendChatActionTyping(msg_final);
+            User user = new User(msg_final.getChatId(), msg_final.getFrom().getUserName(), -1);
             if (txt.toLowerCase().equals("нет"))
             {
-                userDao.Merge(msg_final.getChatId(), msg_final.getFrom().getUserName(), null);
+                userDao.merge(user);
                 Main._Log.info("Пользователь " + msg_final.getChat().getTitle() +
                         " с chatId = " + msg_final.getChatId() + " добавлен в базу\n");
                 bot.sendMsg(msg_final, "Вы успешно зарегистрированы! Если вы захотите " +
                         "ввести группу в дальнейшем, то можете это сделать в меню настроек", true);
                 bot.sendStartKeyboard(msg_final, false);
             }
-            else if (!(txt.toLowerCase().equals("нет")) && groupDao.getGroupForName(txt).size() > 0)
+            else if (!(txt.toLowerCase().equals("нет")) && size > 0)
             {
-                Integer groupId = groupDao.getGroupForName(txt).get(0).getId();
+                Integer groupId = groups.get(0).getId();
                 String groupName = groupDao.getGroup(groupId).getGroupName();
-                userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), groupId);
+                user.setGroupId(groupId);
+                userDao.merge(user);
                 bot.sendMsg(msg_final, "Вы успешно зарегистрированы и прикреплены к группе " +
                                 groupName,
                         true);
@@ -1193,7 +1215,7 @@ public class MessageCheck
                 bot.sendChatActionTyping(msg_final);
                 bot.sendStartKeyboard(msg_final, false);
             }
-            else if (!(txt.toLowerCase().equals("нет")) && groupDao.getGroupForName(txt).size() == 0)
+            else if (!(txt.toLowerCase().equals("нет")) && size == 0)
                 bot.sendMsgReply(msg_final, Emoji.Card_Index + "Регистрация:\nК " +
                         "сожелению, введенной вами группы не существует или она еще не внесена в базу. Попробуйте " +
                         "еще раз или напишите слово \"Нет\", чтобы установить группу позднее");
@@ -1448,7 +1470,8 @@ public class MessageCheck
                         {
                             if (adminInfoDao.getAdminInfosForLogin(data[1]).size() == 0)
                             {
-                                adminInfoDao.Insert(Long.parseLong(data[0]), data[1], data[2]);
+                                AdminInfo adminInfo = new AdminInfo(Long.parseLong(data[0]), data[1], data[2]);
+                                adminInfoDao.insert(adminInfo);
                                 bot.sendMsg(msg_final, "Пользователь с chatId\"" +
                                         data[0] + "\", логином \"" + data[1] + "\" и паролем \"" + data[2] +
                                         "\" добавлен", true);
@@ -1524,7 +1547,7 @@ public class MessageCheck
                 {
                     if (adminInfoDao.getAdminInfosForLogin(txt.trim()).size() == 1)
                     {
-                        adminInfoDao.Delete(adminInfoDao.getAdminInfosForLogin(txt.trim()).get(0).getChatId());
+                        adminInfoDao.delete(adminInfoDao.getAdminInfosForLogin(txt.trim()).get(0).getChatId());
                         bot.sendMsg(msg_final, "Пользователь с логином \"" + txt.trim()
                                 + "\" удален", true);
                         bot.sendAdminKeyboard(msg_final, false);
@@ -1592,8 +1615,9 @@ public class MessageCheck
                 {
                     if (StringUtils.countMatches(txt.trim(), " ") == 0)
                     {
-                        adminInfoDao.Update(msg_final.getChatId(), adminInfoDao.getAdminInfo(msg_final.getChatId()).getLogin(),
-                                txt.trim());
+                        AdminInfo adminInfo = new AdminInfo(msg_final.getChatId(),
+                                adminInfoDao.getAdminInfo(msg_final.getChatId()).getLogin(), txt.trim());
+                        adminInfoDao.update(adminInfo);
                         bot.sendMsg(msg_final, "Пароль обновлен", true);
                         bot.sendAdminKeyboard(msg_final, false);
                     }
@@ -1779,7 +1803,7 @@ public class MessageCheck
             switch (txt.trim().toLowerCase())
             {
                 case "да":
-                    scheduleDao.DeleteUserSchedule(msg_final.getChatId());
+                    scheduleDao.deleteUserSchedule(msg_final.getChatId());
                     bot.sendMsg(msg_final, "Ваше расписание успешно удалено", true);
                     bot.sendChatActionTyping(msg_final);
                     bot.sendCustomScheduleKeyboard(msg_final, false);
@@ -1807,8 +1831,8 @@ public class MessageCheck
                 length = -2;
             else
             {
-                 schedule = txt.trim().split(";");
-                 length = schedule.length;
+                schedule = txt.trim().split(";");
+                length = schedule.length;
             }
 
             int dayOfWeek = 0;
@@ -1828,7 +1852,7 @@ public class MessageCheck
             }
             if (length == -2)
             {
-                scheduleDao.DeleteUserSchedule(msg_final.getChatId());
+                scheduleDao.deleteUserSchedule(msg_final.getChatId());
                 bot.sendMsg(msg_final, "Составление расписания отменено. Созданные " +
                         "строки удалены", true);
                 bot.sendChatActionTyping(msg_final);
@@ -1861,41 +1885,46 @@ public class MessageCheck
                 }
                 else
                 {
-                    List<Teacher> teacher = teacherDao.getTeacherForCustomSchedule(schedule[4], schedule[5],
+                    List<Teacher> teachers = teacherDao.getTeacherForCustomSchedule(schedule[4], schedule[5],
                             schedule[6], schedule[7], schedule[8]);
-                    if (teacher.size() == 1)
-                        teacherId = teacher.get(0).getId();
+                    if (teachers.size() == 1)
+                        teacherId = teachers.get(0).getId();
                     else
                     {
-                        teacherId = teacherDao.Count() + 1;
-                        teacherDao.Merge(teacherId, schedule[5], schedule[4], schedule[6], schedule[7], schedule[8]);
+                        teacherId = teacherDao.count() + 1;
+                        Teacher teacher = new Teacher(teacherId, schedule[4], schedule[5], schedule[6], schedule[7],
+                                schedule[8]);
+                        teacherDao.merge(teacher);
                     }
 
-                    List<Subject> subject = subjectDao.getSubjectForParse(schedule[3], teacherId);
-                    if (subject.size() == 1)
-                        subjectId = subject.get(0).getId();
+                    List<Subject> subjects = subjectDao.getSubjectForParse(schedule[3], teacherId);
+                    if (subjects.size() == 1)
+                        subjectId = subjects.get(0).getId();
                     else
                     {
-                        subjectId = subjectDao.Count() + 1;
-                        subjectDao.Merge(subjectId, schedule[3], teacherId);
+                        subjectId = subjectDao.count() + 1;
+                        Subject subject = new Subject(subjectId, schedule[3], teacherId);
+                        subjectDao.merge(subject);
                     }
 
-                    List<SubjectType> subjectType = subjectTypeDao.getSubjectTypeForParse(schedule[9]);
-                    if (subjectType.size() == 1)
-                        subjectTypeId = subjectType.get(0).getId();
+                    List<SubjectType> subjectTypes = subjectTypeDao.getSubjectTypeForParse(schedule[9]);
+                    if (subjectTypes.size() == 1)
+                        subjectTypeId = subjectTypes.get(0).getId();
                     else
                     {
-                        subjectTypeId = subjectTypeDao.Count() + 1;
-                        subjectTypeDao.Merge(subjectTypeId, subjectId, schedule[9]);
+                        subjectTypeId = subjectTypeDao.count() + 1;
+                        SubjectType subjectType = new SubjectType(subjectTypeId, schedule[9]);
+                        subjectTypeDao.merge(subjectType);
                     }
 
-                    List<Classroom> classroom = classroomDao.getClassroomForParse(schedule[10]);
-                    if (classroom.size() == 1)
-                        classroomId = classroom.get(0).getId();
+                    List<Classroom> classrooms = classroomDao.getClassroomForParse(schedule[10]);
+                    if (classrooms.size() == 1)
+                        classroomId = classrooms.get(0).getId();
                     else
                     {
-                        classroomId = classroomDao.Count() + 1;
-                        classroomDao.Merge(classroomId, schedule[10], null);
+                        classroomId = classroomDao.count() + 1;
+                        Classroom classroom = new Classroom(classroomId, schedule[10], null);
+                        classroomDao.merge(classroom);
                     }
 
                     List<Schedule> schedules = scheduleDao.getScheduleForParse(classNumber, classroomId, subjectId,
@@ -1906,11 +1935,13 @@ public class MessageCheck
                     else
                     {
                         scheduleId = scheduleDao.Count() + 1;
-                        scheduleDao.Merge(scheduleId, classNumber, classroomId, subjectId, subjectTypeId, dayOfWeek,
-                                numberOfWeek);
+                        Schedule newSchedule = new Schedule(scheduleId, classNumber, subjectId, subjectTypeId,
+                                classroomId, dayOfWeek, numberOfWeek);
+                        scheduleDao.merge(newSchedule);
                     }
 
-                    scheduleDao.Insert_User_Schedule(msg_final.getChatId(), scheduleId);
+                    UserSchedule userSchedule = new UserSchedule(msg_final.getChatId(), scheduleId);
+                    scheduleDao.insertUserSchedule(userSchedule);
 
                     bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: " + addUserScheduleText);
                 }
@@ -1933,7 +1964,8 @@ public class MessageCheck
             switch (txt.trim().toLowerCase())
             {
                 case "да":
-                    userDao.Merge(user.getChatId(), user.getChatName(), null);
+                    user.setGroupId(-1);
+                    userDao.merge(user);
                     bot.sendMsg(msg_final, "Ваше успешно отсоединены от группы " +
                             groupName, true);
                     bot.sendChatActionTyping(msg_final);
@@ -1960,7 +1992,7 @@ public class MessageCheck
             switch (txt.trim().toLowerCase())
             {
                 case "да":
-                    scheduleDao.DeleteUserSchedule(msg_final.getChatId());
+                    scheduleDao.deleteUserSchedule(msg_final.getChatId());
                     bot.sendMsg(msg_final, "Ваше расписание успешно удалено", true);
                     bot.sendChatActionTyping(msg_final);
                     bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: " + addUserScheduleText);
@@ -2032,42 +2064,46 @@ public class MessageCheck
                 }
                 else
                 {
-                    List<Teacher> teacher = teacherDao.getTeacherForCustomSchedule(schedule[4], schedule[5],
+                    List<Teacher> teachers = teacherDao.getTeacherForCustomSchedule(schedule[4], schedule[5],
                             schedule[6], schedule[7], schedule[8]);
-                    if (teacher.size() == 1)
-                        teacherId = teacher.get(0).getId();
+                    if (teachers.size() == 1)
+                        teacherId = teachers.get(0).getId();
                     else
                     {
-                        teacherId = teacherDao.Count() + 1;
-                        teacherDao.Merge(teacherId, schedule[5], schedule[4], schedule[6], schedule[7], schedule[8]);
+                        teacherId = teacherDao.count() + 1;
+                        Teacher teacher = new Teacher(teacherId, schedule[4], schedule[5], schedule[6], schedule[7],
+                                schedule[8]);
+                        teacherDao.merge(teacher);
                     }
 
-
-                    List<Subject> subject = subjectDao.getSubjectForParse(schedule[3], teacherId);
-                    if (subject.size() == 1)
-                        subjectId = subject.get(0).getId();
+                    List<Subject> subjects = subjectDao.getSubjectForParse(schedule[3], teacherId);
+                    if (subjects.size() == 1)
+                        subjectId = subjects.get(0).getId();
                     else
                     {
-                        subjectId = subjectDao.Count() + 1;
-                        subjectDao.Merge(subjectId, schedule[3], teacherId);
+                        subjectId = subjectDao.count() + 1;
+                        Subject subject = new Subject(subjectId, schedule[3], teacherId);
+                        subjectDao.merge(subject);
                     }
 
-                    List<SubjectType> subjectType = subjectTypeDao.getSubjectTypeForParse(schedule[9]);
-                    if (subjectType.size() == 1)
-                        subjectTypeId = subjectType.get(0).getId();
+                    List<SubjectType> subjectTypes = subjectTypeDao.getSubjectTypeForParse(schedule[9]);
+                    if (subjectTypes.size() == 1)
+                        subjectTypeId = subjectTypes.get(0).getId();
                     else
                     {
-                        subjectTypeId = subjectTypeDao.Count() + 1;
-                        subjectTypeDao.Merge(subjectTypeId, subjectId, schedule[9]);
+                        subjectTypeId = subjectTypeDao.count() + 1;
+                        SubjectType subjectType = new SubjectType(subjectTypeId, schedule[9]);
+                        subjectTypeDao.merge(subjectType);
                     }
 
-                    List<Classroom> classroom = classroomDao.getClassroomForParse(schedule[10]);
-                    if (classroom.size() == 1)
-                        classroomId = classroom.get(0).getId();
+                    List<Classroom> classrooms = classroomDao.getClassroomForParse(schedule[10]);
+                    if (classrooms.size() == 1)
+                        classroomId = classrooms.get(0).getId();
                     else
                     {
-                        classroomId = classroomDao.Count() + 1;
-                        classroomDao.Merge(classroomId, schedule[10], null);
+                        classroomId = classroomDao.count() + 1;
+                        Classroom classroom = new Classroom(classroomId, schedule[10], null);
+                        classroomDao.merge(classroom);
                     }
 
                     List<Schedule> schedules = scheduleDao.getScheduleForParse(classNumber, classroomId, subjectId,
@@ -2078,11 +2114,13 @@ public class MessageCheck
                     else
                     {
                         scheduleId = scheduleDao.Count() + 1;
-                        scheduleDao.Merge(scheduleId, classNumber, classroomId, subjectId, subjectTypeId, dayOfWeek,
-                                numberOfWeek);
+                        Schedule newSchedule = new Schedule(scheduleId, classNumber, subjectId, subjectTypeId,
+                                classroomId, dayOfWeek, numberOfWeek);
+                        scheduleDao.merge(newSchedule);
                     }
 
-                    scheduleDao.Insert_User_Schedule(msg_final.getChatId(), scheduleId);
+                    UserSchedule userSchedule = new UserSchedule(msg_final.getChatId(), scheduleId);
+                    scheduleDao.insertUserSchedule(userSchedule);
 
                     bot.sendMsgReply(msg_final, Emoji.Scroll + "Обновить расписание: " + refreshUserScheduleText);
                 }
@@ -2102,7 +2140,7 @@ public class MessageCheck
             switch (txt.trim().toLowerCase())
             {
                 case "да":
-                    scheduleDao.DeleteUserSchedule(msg_final.getChatId());
+                    scheduleDao.deleteUserSchedule(msg_final.getChatId());
                     bot.sendMsg(msg_final, "Ваше расписание успешно удалено", true);
                     bot.sendChatActionTyping(msg_final);
                     bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ json файл с " +
@@ -2127,7 +2165,8 @@ public class MessageCheck
             switch (txt.trim().toLowerCase())
             {
                 case "да":
-                    userDao.Merge(msg_final.getChatId(), msg_final.getChat().getUserName(), null);
+                    User user = new User(msg_final.getChatId(), msg_final.getChat().getUserName(), -1);
+                    userDao.merge(user);
                     bot.sendMsg(msg_final, "Вы успешно открепленны от группы", true);
                     bot.sendChatActionTyping(msg_final);
                     bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Отправьте в ответ json файл с " +
@@ -2150,6 +2189,197 @@ public class MessageCheck
             bot.sendChatActionTyping(msg_final);
             bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Для загрузки необходимо " +
                     "отправить файл. Отправьте в ответ json файл с пользовательским расписанием");
+        }
+    }
+
+    public void checkDocumentMessage(Message msg_final, String uploadedFileId)
+    {
+        String txt = msg_final.getText();
+        String replyTxt = msg_final.getReplyToMessage().getText();
+        if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") &&
+                msg_final.getReplyToMessage().getText().contains("Отправьте в ответ json файл"))
+        {
+
+            GetFile uploadedFile = new GetFile();
+            uploadedFile.setFileId(uploadedFileId);
+            String json = "";
+            try
+            {
+                String uploadedFilePath = bot.execute(uploadedFile).getFilePath();
+                File file = bot.downloadFile(uploadedFilePath);
+                Scanner scanner = new Scanner(file);
+                json = scanner.useDelimiter("\\A").next();
+                scanner.close();
+            }
+            catch (TelegramApiException e)
+            {
+                Main._Log.error("Не удалось получить путь файла: " + e);
+                bot.sendChatActionTyping(msg_final);
+                bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Произошла ошибка. Отправьте в " +
+                        "ответ json файл с пользовательским расписанием");
+            }
+            catch (IOException e)
+            {
+                Main._Log.error("Не удалось получить строку из файла: " + e);
+                bot.sendChatActionTyping(msg_final);
+                bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Произошла ошибка. Отправьте в " +
+                        "ответ json файл с пользовательским расписанием");
+            }
+            catch (NoSuchElementException e)
+            {
+                Main._Log.error("Не удалось распарсить файл: " + e);
+                bot.sendChatActionTyping(msg_final);
+                bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: Возможно вы загрузили " +
+                        "некорректный файл. Отправьте в ответ json файл с пользовательским расписанием");
+            }
+
+            if (jsonWorker.loadJson(json, msg_final.getChatId()))
+            {
+                bot.sendChatActionTyping(msg_final);
+                bot.sendMsg(msg_final, "Расписание успешно загружено", true);
+                bot.sendChatActionTyping(msg_final);
+                bot.sendCustomScheduleKeyboard(msg_final, false);
+            }
+            else
+            {
+                bot.sendChatActionTyping(msg_final);
+                bot.sendMsg(msg_final, "В файле с расписанием обнаружена ошибка. Такое может быть, если файл был " +
+                        "изменен вручную. Попробуйте использовать другой файл", true);
+                bot.sendChatActionTyping(msg_final);
+                bot.sendCustomScheduleKeyboard(msg_final, false);
+            }
+        }
+        else if (replyTxt.contains("Вы уверены, что хотите отключиться от бота?"))
+        {
+            bot.sendMsgReply(msg_final, "В ответ необходимо прислать не документ. Вы уверены, " +
+                    "что хотите отключиться от бота? Если вы это сделаете, то ваши данные удаляться. В ответ " +
+                    "пришлите *Да* или *Нет*");
+        }
+        else if (replyTxt.contains(Emoji.Man + "Имя"))
+        {
+            bot.sendMsgReply(msg_final,Emoji.Man + "Имя: В ответ необходимо прислать не документ. Введите " +
+                    "фамилию преподавателя (с большой буквы)");
+        }
+        else if (replyTxt.contains(Emoji.Memo + "Контакты"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Memo + "Контакты: В ответ необходимо прислать не документ. " +
+                    "Введите фамилию преподавателя");
+        }
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains(Emoji.Wrench + "Введите " +
+                "группу в формате XXXX-YY-YY"))
+        {
+            bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: В ответ необходимо прислать не документ. " +
+                    "Введите группу в формате XXXX-YY-YY (X - буквы, Y - цифры)");
+        }
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") && replyTxt.contains("У вас установлено " +
+                "пользовательское расписание"))
+        {
+            bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: В ответ необходимо прислать не документ. " +
+                    "У вас установлено пользовательское расписание, вы уверены, что хотите его удалить и установить " +
+                    "расписание группы? (В ответ пришлите \"Да\", если хотите удалить расписание и \"Нет\", " +
+                    "если хотите оставить его)");
+        }
+        else if (replyTxt.contains(Emoji.Wrench + "Установить группу") & replyTxt.contains("У вас уже установлена группа"))
+        {
+            bot.sendMsgReply(msg_final,Emoji.Wrench + "Установить группу: В ответ необходимо прислать не документ. " +
+                    "У вас уже установлена группа " +
+                    groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName() +
+                    ". Вы точно хотите сменить группу? (В ответ пришлите \"Да\", если хотите сменить " +
+                    "группу и \"Нет\", если хотите оставить ее)");
+        }
+        else if (replyTxt.contains(Emoji.Wrench + "Удалить группу") && replyTxt.contains("Вы точно хотите удалить группу?"))
+        {
+            bot.sendMsgReply(msg_final,Emoji.Wrench + "Удалить группу: В ответ необходимо прислать не документ. " +
+                    "У вас установлена группа " +
+                    groupDao.getGroup(userDao.getUser(msg_final.getChatId()).getGroupId()).getGroupName() +
+                    ". Вы точно хотите удалить группу? (В ответ пришлите \"Да\", если хотите удалить " +
+                    "группу и \"Нет\", если хотите оставить ее)");
+        }
+        else if (replyTxt.contains("Введите дату в формате"))
+        {
+            bot.sendMsgReply(msg_final, "В ответ необходимо прислать не документ. Введите дату в формате " +
+                    "дд.мм.гггг");
+        }
+        else if (replyTxt.contains("Введите номер пары"))
+        {
+            bot.sendMsgReply(msg_final, "В ответ необходимо прислать не документ. Введите номер пары");
+        }
+        else if (replyTxt.contains(Emoji.Card_Index + "Регистрация:\n"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Card_Index + "Регистрация: В ответ необходимо прислать не документ. " +
+                    "\n*Приветствую!*\nХотите ли вы сразу добавить группу, расписание которой будете получать в " +
+                    "дальнейшем?\nЕсли да, то введите группу в формате XXXX-YY-YY (X - буквы, Y - цифры),\n" +
+                    "если нет, то введите в ответ слово \"Нет\"");
+        }
+        else if (replyTxt.contains("Введите название дисциплины"))
+        {
+            bot.sendMsgReply(msg_final, "В ответ необходимо прислать не документ. Введите название дисциплины " +
+                    "(как в расписании)");
+        }
+        else if (replyTxt.contains(Emoji.Incoming_Envelope + "Предложение") &&
+                replyTxt.contains("Введите текст сообщения"))
+        {
+            bot.sendMsgReply(msg_final, txt + ": В ответ необходимо прислать не документ. Введите текст сообщения");
+        }
+        else if (replyTxt.contains(Emoji.Incoming_Envelope + "Ошибка") &&
+                replyTxt.contains("Введите текст сообщения"))
+        {
+            bot.sendMsgReply(msg_final, txt + ": В ответ необходимо прислать не документ. Введите текст сообщения");
+        }
+        else if (replyTxt.contains(Emoji.Incoming_Envelope + "Другое") &&
+                replyTxt.contains("Введите текст сообщения"))
+        {
+            bot.sendMsgReply(msg_final, txt + ": В ответ необходимо прислать не документ. Введите текст сообщения");
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Удалить расписание") & replyTxt.contains("Вы уверены, что хотите удалить " +
+                "свое расписание?"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Удалить расписание: В ответ необходимо прислать не документ." +
+                    " Вы уверены, что хотите удалить свое расписание? (В ответ напишите \"Да\" или \"Нет\")");
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Создать расписание") & replyTxt.contains("Через точку с запятой"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: В ответ необходимо прислать не " +
+                    "документ. " + addUserScheduleText);
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Создать расписание") & replyTxt.contains("У вас установлена " +
+                "группа"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: В ответ необходимо прислать не " +
+                    "документ. У вас установлена группа. Вы точно хотите ее удалить? В ответ напишите \"Да\" " +
+                    "или \"Нет\"");
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Создать расписание") & replyTxt.contains("У вас уже установлено " +
+                "свое расписание"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Создать расписание: В ответ необходимо прислать не " +
+                    "документ. У вас уже установлено свое расписание. Вы точно хотите его удалить и создать новое? " +
+                    "В ответ напишите \"Да\" или \"Нет\"");
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Обновить расписание") & replyTxt.contains("Через точку с запятой"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Обновить расписание: В ответ необходимо прислать не " +
+                    "документ. " + refreshUserScheduleText);
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") && replyTxt.contains("У вас уже " +
+                "установлено свое расписание"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: В ответ необходимо прислать не " +
+                    "документ. У вас уже установлено свое расписание. Вы точно хотите его удалить и загрузить новое " +
+                    "из файла? В ответ напишите \"Да\" или \"Нет\"");
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") && replyTxt.contains("У вас уже " +
+                "установлено расписание группы"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: В ответ необходимо прислать не " +
+                    "документ. У вас уже установлено расписание группы. Вы точно хотите его удалить и загрузить " +
+                    "новое из файла? В ответ напишите \"Да\" или \"Нет\"");
+        }
+        else if (replyTxt.contains(Emoji.Scroll + "Загрузить расписание:") && replyTxt.contains("Отправьте в ответ " +
+                "json файл"))
+        {
+            bot.sendMsgReply(msg_final, Emoji.Scroll + "Загрузить расписание: В ответ необходимо прислать не " +
+                    "документ. Отправьте в ответ json файл с пользовательским расписанием");
         }
     }
 }

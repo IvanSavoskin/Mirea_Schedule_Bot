@@ -15,16 +15,16 @@ public interface GroupDao
 
     Group getGroupForOutput(Long chatId, Integer numberOfWeek, Integer dayOfWeek);
 
-    void Insert(Integer id, String groupName, String fileName);
+    void insert(Group group);
 
-    void Merge(Integer id, String groupName, String fileName);
+    void merge(Group group);
 
-    void Update(Integer id, String groupName, String fileName);
+    void update(Group group);
 
-    void Delete(Integer id);
+    void delete(Integer id);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }

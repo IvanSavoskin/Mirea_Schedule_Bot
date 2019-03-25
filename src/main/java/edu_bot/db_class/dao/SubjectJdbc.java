@@ -7,17 +7,20 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class SubjectJdbc implements SubjectDao
 {
     private final SubjectTypeDao subjectTypeDao;
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<Subject> subjectConsumer;
 
-    public SubjectJdbc(SubjectTypeDao subjectTypeDao, JdbcTemplate jdbcTemplate)
+    public SubjectJdbc(SubjectTypeDao subjectTypeDao, JdbcTemplate jdbcTemplate, Consumer<Subject> subjectConsumer)
     {
         this.subjectTypeDao = subjectTypeDao;
         this.jdbcTemplate = jdbcTemplate;
+        this.subjectConsumer = subjectConsumer;
     }
 
     @Override
@@ -64,50 +67,40 @@ public class SubjectJdbc implements SubjectDao
     }
 
     @Override
-    public  void  Insert(Integer id, String subjectName, Integer teacherId)
+    public  void insert(Subject subject)
     {
         jdbcTemplate.update("INSERT INTO \"Subject\" (\"id\", \"subjectName\", \"teacherId\")" +
-                "VALUES (?, ?, ?)", id, subjectName, teacherId);
+                "VALUES (?, ?, ?)", subject.getId(), subject.getSubjectName(), subject.getTeacherId());
 
     }
 
     @Override
-    public  void  Merge(Integer id, String subjectName, Integer teacherId)
+    public  void merge(Subject subject)
     {
-        jdbcTemplate.update("MERGE INTO \"Subject\" (\"id\", \"subjectName\", \"teacherId\") KEY(\"id\")" +
-                " VALUES (?, ?, ?)", id, subjectName, teacherId);
-       }
-
-    /*@Override
-    public  void  Merge(Integer id, String subjectName, Integer teacherId)
-    {
-        jdbcTemplate.update("INSERT INTO \"Subject\" (\"id\", \"subjectName\", \"teacherId\")  VALUES (?, ?, ?)" +
-                "ON CONFLICT (\"id\") DO UPDATE SET \"subjectName\" = ?, \"teacherId\" = ?", id, subjectName, teacherId,
-                subjectName, teacherId);
-
-    }*/
+        subjectConsumer.accept(subject);
+    }
 
     @Override
-    public void Update(Integer id, String subjectName, Integer teacherId)
+    public void update(Subject subject)
     {
         jdbcTemplate.update("UPDATE \"Subject\" SET \"subjectName\" = ?, \"teacherId\" = ? WHERE \"id\" = ?",
-                subjectName, teacherId, id);
+                subject.getSubjectName(), subject.getTeacherId(), subject.getId());
     }
 
     @Override
-    public void Delete(Integer id)
+    public void delete(Integer id)
     {
         jdbcTemplate.update("DELETE FROM \"Subject\" WHERE \"id\" = ?", id);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"Subject\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"Subject\"", Integer.class);
     }

@@ -1,5 +1,6 @@
 package edu_bot.main_class;
 
+import edu_bot.main_class.config_class.AppConfig;
 import edu_bot.schedule_class.Download_Schedule;
 import edu_bot.schedule_class.Excel_Parser;
 import org.apache.logging.log4j.LogManager;
@@ -26,13 +27,11 @@ public class Main
 
         _Log.info("Логгер начал работу");
 
-        Config.dbConfigLoad();
-
         ApiContextInitializer.init();
         final AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(AppConfig.class);
 
         /*_Log.info("Удаление всех md5-сумм");
-        context.getBean(FileSumDao.class).DeleteAll();
+        context.getBean(FileSumDao.class).deleteAll();
         _Log.info("Md5-суммы удалены");*/
 
         /** Загрузка файлов с расписаниями по таймеру (каждые день) */
@@ -48,8 +47,6 @@ public class Main
                     }
                 },
                 1, period);
-
-        Config.botConfigLoad();
 
         TelegramBotsApi botsApi = new TelegramBotsApi();
         try

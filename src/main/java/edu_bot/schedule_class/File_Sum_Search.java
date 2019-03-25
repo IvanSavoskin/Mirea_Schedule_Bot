@@ -1,10 +1,12 @@
 package edu_bot.schedule_class;
 
 import edu_bot.db_class.dao.FileSumDao;
+import edu_bot.db_class.model.FileSum;
 import org.springframework.stereotype.Component;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class File_Sum_Search
@@ -31,15 +33,17 @@ public class File_Sum_Search
     {
         boolean result = false;
         String md5 = getMd5(fileName);
+        List<FileSum> fileSums = fileSumDao.getFileSumsForName(fileName);
+        int size = fileSums.size();
 
-        if (fileSumDao.getFileSumsForName(fileName).size() == 1)
+        if (size == 1)
         {
             if (!fileSumDao.getFileSum(fileName).getMd5().equals(md5))
             {
                 result = true;
             }
         }
-        else if (fileSumDao.getFileSumsForName(fileName).size() == 0)
+        else if (size == 0)
         {
             result = true;
         }
@@ -50,16 +54,21 @@ public class File_Sum_Search
     public void addMd5 (String fileName) throws IOException
     {
         String md5 = getMd5(fileName);
-        if (fileSumDao.getFileSumsForName(fileName).size() == 1)
+        List<FileSum> fileSums = fileSumDao.getFileSumsForName(fileName);
+        int size = fileSums.size();
+
+        if (size == 1)
         {
             if (!fileSumDao.getFileSum(fileName).getMd5().equals(md5))
             {
-                fileSumDao.Update(fileName, md5);
+                FileSum fileSum = new FileSum(fileName, md5);
+                fileSumDao.update(fileSum);
             }
         }
-        else if (fileSumDao.getFileSumsForName(fileName).size() == 0)
+        else if (size == 0)
         {
-            fileSumDao.Insert(fileName, md5);
+            FileSum fileSum = new FileSum(fileName, md5);
+            fileSumDao.insert(fileSum);
         }
     }
 }

@@ -5,13 +5,12 @@ import edu_bot.additional_class.Sticker;
 import edu_bot.db_class.dao.*;
 import edu_bot.db_class.model.User;
 import edu_bot.main_class.message_handling_class.MessageCheck;
-import edu_bot.schedule_class.JsonWorker;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.ActionType;
-import org.telegram.telegrambots.meta.api.methods.GetFile;
 import org.telegram.telegrambots.meta.api.methods.send.*;
 import org.telegram.telegrambots.meta.api.objects.Message;
 import org.telegram.telegrambots.meta.api.objects.Update;
@@ -25,34 +24,38 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import java.io.*;
 import java.util.*;
 
-//TODO: Поставить заглушки при попытке отправить документ на сообщение, где требуется текст
-
 @Component
     public class Bot extends TelegramLongPollingBot
     {
        
         private final UserDao userDao;
         private final MessageCheck messageCheck;
-        private final JsonWorker jsonWorker;
+
+        @Value("${telegram.bot.name}")
+        private String botName;
+
+        @Value("${telegram.bot.token}")
+        private String botToken;
 
         @Autowired
-        public Bot(UserDao userDao, @Lazy MessageCheck messageCheck, JsonWorker jsonWorker)
+        public Bot(UserDao userDao, @Lazy MessageCheck messageCheck)
         {
             this.userDao = userDao;
             this.messageCheck = messageCheck;
-            this.jsonWorker = jsonWorker;
         }
 
         /** Получение имени бота */
         @Override
-        public String getBotUsername() {
-            return Config.BOT_NAME;
+        public String getBotUsername()
+        {
+            return botName;
         }
 
         /** Получение конфига бота */
         @Override
-        public String getBotToken() {
-            return Config.BOT_TOKEN;
+        public String getBotToken()
+        {
+            return botToken;
         }
 
         /** Получение новых сообщений в диалогах */
@@ -81,59 +84,8 @@ import java.util.*;
             }
             else if (update.hasMessage() && update.getMessage().hasDocument())
             {
-                if (msg.getReplyToMessage().getText().contains(Emoji.Scroll + "Загрузить расписание:") &&
-                        msg.getReplyToMessage().getText().contains("Отправьте в ответ json файл"))
-                {
-                    String uploadedFileId = update.getMessage().getDocument().getFileId();
-                    GetFile uploadedFile = new GetFile();
-                    uploadedFile.setFileId(uploadedFileId);
-                    String json = "";
-                    try
-                    {
-                        String uploadedFilePath = execute(uploadedFile).getFilePath();
-                        File file = downloadFile(uploadedFilePath);
-                        Scanner scanner = new Scanner(file);
-                        json = scanner.useDelimiter("\\A").next();
-                        scanner.close();
-                    }
-                    catch (TelegramApiException e)
-                    {
-                        Main._Log.error("Не удалось получить путь файла: " + e);
-                        sendChatActionTyping(msg);
-                        sendMsgReply(msg, Emoji.Scroll + "Загрузить расписание: Произошла ошибка. Отправьте в " +
-                                "ответ json файл с пользовательским расписанием");
-                    }
-                    catch (IOException e)
-                    {
-                        Main._Log.error("Не удалось получить строку из файла: " + e);
-                        sendChatActionTyping(msg);
-                        sendMsgReply(msg, Emoji.Scroll + "Загрузить расписание: Произошла ошибка. Отправьте в " +
-                                "ответ json файл с пользовательским расписанием");
-                    }
-                    catch (NoSuchElementException e)
-                    {
-                        Main._Log.error("Не удалось распарсить файл: " + e);
-                        sendChatActionTyping(msg);
-                        sendMsgReply(msg, Emoji.Scroll + "Загрузить расписание: Возможно вы загрузили " +
-                                "некорректный файл. Отправьте в ответ json файл с пользовательским расписанием");
-                    }
-
-                    if (jsonWorker.loadJson(json, msg.getChatId()))
-                    {
-                        sendChatActionTyping(msg);
-                        sendMsg(msg, "Расписание успешно загружено", true);
-                        sendChatActionTyping(msg);
-                        sendCustomScheduleKeyboard(msg, false);
-                    }
-                    else
-                    {
-                        sendChatActionTyping(msg);
-                        sendMsg(msg, "В файле с расписанием обнаружена ошибка. Такое может быть, если файл был " +
-                                "изменен вручную. Попробуйте использовать другой файл", true);
-                        sendChatActionTyping(msg);
-                        sendCustomScheduleKeyboard(msg, false);
-                    }
-                }
+                String uploadedFileId = update.getMessage().getDocument().getFileId();
+                messageCheck.checkDocumentMessage(msg, uploadedFileId);
             }
 
             /** Метод получения кода отправленных стикеров */

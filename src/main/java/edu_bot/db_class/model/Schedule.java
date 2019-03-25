@@ -6,7 +6,7 @@ public class Schedule
     private Integer groupId;
     private Integer classTime;
     private Integer subjectId;
-    private  Integer subjectTypeId;
+    private Integer subjectTypeId;
     private Integer classroomId;
     private Integer dayOfWeek;
     private Integer numberOfWeek;
@@ -26,19 +26,7 @@ public class Schedule
     private String mail;
     private Integer classNumber;
 
-    public Schedule(int id, int classTime, int subjectId, int subjectTypeId, int classroomId, Integer dayOfWeek,
-                    Integer numberOfWeek)
-    {
-        this.id = id;
-        this.classTime = classTime;
-        this.subjectId = subjectId;
-        this.subjectTypeId = subjectTypeId;
-        this.classroomId = classroomId;
-        this.dayOfWeek = dayOfWeek;
-        this.numberOfWeek = numberOfWeek;
-    }
-
-    public Schedule(Integer classNumber, String classStart, String classStop, String className, String subjectName,
+    public Schedule(int classNumber, String classStart, String classStop, String className, String subjectName,
                     String typeName, String surname, String name, String second_name, String phone_number, String mail,
                     Integer dayOfWeek, Integer numberOfWeek)
     {
@@ -57,8 +45,8 @@ public class Schedule
         this.numberOfWeek = numberOfWeek;
     }
 
-    public Schedule(int id, int classTime, int subjectId, int subjectTypeId, int classroomId, Integer dayOfWeek,
-                    Integer numberOfWeek, ClassTime classTimes, Classroom classrooms, Subject subjects, SubjectType subjectTypes)
+    public Schedule(int id, int classTime, int subjectId, int subjectTypeId, int classroomId, int dayOfWeek,
+                    int numberOfWeek, ClassTime classTimes, Classroom classrooms, Subject subjects, SubjectType subjectTypes)
     {
         this.id = id;
         this.classTime = classTime;
@@ -73,14 +61,26 @@ public class Schedule
         this.subjectTypes = subjectTypes;
     }
 
-    public Schedule(int id, Integer dayOfWeek, Integer numberOfWeek)
+    public Schedule(int id, int classTime, int subjectId, int subjectTypeId, int classroomId, int dayOfWeek,
+                    int numberOfWeek)
+    {
+        this.id = id;
+        this.classTime = classTime;
+        this.subjectId = subjectId;
+        this.subjectTypeId = subjectTypeId;
+        this.classroomId = classroomId;
+        this.dayOfWeek = dayOfWeek;
+        this.numberOfWeek = numberOfWeek;
+    }
+
+    public Schedule(int id, int dayOfWeek, int numberOfWeek)
     {
         this.id = id;
         this.dayOfWeek = dayOfWeek;
         this.numberOfWeek = numberOfWeek;
     }
 
-    public Schedule(int id, Integer groupId)
+    public Schedule(int id, int groupId)
     {
         this.id = id;
         this.groupId = groupId;
@@ -180,7 +180,7 @@ public class Schedule
         return className;
     }
 
-    public void setClassName(String name) {
+    public void setClassName(String className) {
         this.className = className;
     }
 

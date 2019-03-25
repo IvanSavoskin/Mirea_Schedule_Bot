@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS "User"(
 	"chatId" integer PRIMARY KEY,
 	"chatName" text NOT NULL,
-	"groupId" integer NULL
+	"groupId" integer NULL DEFAULT -1
 );
 
 CREATE TABLE IF NOT EXISTS "Group"(
@@ -121,8 +121,8 @@ ON DELETE SET NULL;
 ALTER TABLE "User" DROP CONSTRAINT IF EXISTS "FK_User_Group";
 ALTER TABLE "User" ADD CONSTRAINT "FK_User_Group" FOREIGN KEY("groupId")
 REFERENCES "Group" ("id")
-ON UPDATE SET NULL
-ON DELETE SET NULL;
+ON UPDATE SET DEFAULT
+ON DELETE SET DEFAULT;
 
 CREATE TABLE IF NOT EXISTS "EducationDate"(
 	"semesterStartDate" date NULL,
@@ -152,6 +152,9 @@ MERGE INTO "ClassTime" ("classNumber", "classStart", "classStop") VALUES
 	(7, '18:30', '20:00'),
 	(8, '20:10', '21:40');
 
+MERGE INTO "Group" ("id", "groupName", "fileName") VALUES
+	(-1, 'Без группы', '');
+
 /**INSERT INTO "ClassTime" ("classNumber", "classStart", "classStop") VALUES
 	(1, '09:00', '10:30'),
 	(2, '10:40', '12:10'),
@@ -162,3 +165,7 @@ MERGE INTO "ClassTime" ("classNumber", "classStart", "classStop") VALUES
 	(7, '18:30', '20:00'),
 	(8, '20:10', '21:40')
 	ON CONFLICT("classNumber") DO NOTHING;*/
+
+/**INSERT INTO "Group" ("id", "groupName", "fileName") VALUES
+	(-1, 'Без группы', '')
+	ON CONFLICT("id") DO NOTHING;*/

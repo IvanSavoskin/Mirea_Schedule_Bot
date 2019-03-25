@@ -7,17 +7,20 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class TeacherJdbc implements TeacherDao
 {
     private final JdbcTemplate jdbcTemplate;
     private final SubjectDao subjectDao;
+    private final Consumer<Teacher> teacherConsumer;
 
-    public TeacherJdbc(JdbcTemplate jdbcTemplate, SubjectDao subjectDao)
+    public TeacherJdbc(JdbcTemplate jdbcTemplate, SubjectDao subjectDao, Consumer<Teacher> teacherConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
         this.subjectDao = subjectDao;
+        this.teacherConsumer = teacherConsumer;
     }
 
     @Override
@@ -79,52 +82,42 @@ public class TeacherJdbc implements TeacherDao
     }
 
     @Override
-    public void Insert(Integer id, String name, String surname, String second_name, String phone_number, String mail)
+    public void insert(Teacher teacher)
     {
         jdbcTemplate.update("INSERT INTO \"Teacher\" (\"id\", \"name\", \"surname\", \"second_name\"," +
                 " \"phone_number\", \"mail\") VALUES (?, ?, ?, ?, ?, ?)",
-                id, name, surname, second_name, phone_number, mail);
+                teacher.getId(), teacher.getName(), teacher.getSurname(), teacher.getSecond_name(),
+                teacher.getPhone_number(), teacher.getMail());
     }
 
     @Override
-    public void Merge(Integer id, String name, String surname, String second_name, String phone_number, String mail)
+    public void merge(Teacher teacher)
     {
-        jdbcTemplate.update("MERGE INTO \"Teacher\" (\"id\", \"name\", \"surname\", \"second_name\"," +
-                        " \"phone_number\", \"mail\") KEY (\"id\") VALUES (?, ?, ?, ?, ?, ?)",
-                id, name, surname, second_name, phone_number, mail);
-        }
-
-    /*@Override
-    public void Merge(Integer id, String name, String surname, String second_name, String phone_number, String mail)
-    {
-        jdbcTemplate.update("INSERT INTO \"Teacher\" (\"id\", \"name\", \"surname\", \"second_name\"," +
-                " \"phone_number\", \"mail\") VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT (\"id\") DO UPDATE SET \"name\" = ?," +
-                "\"surname\" = ?, \"second_name\" = ?, \"phone_number\" = ?, \"mail\" = ?", id, name, surname,
-                second_name, phone_number, mail, name, surname, second_name, phone_number, mail);
-    }*/
+        teacherConsumer.accept(teacher);
+    }
 
     @Override
-    public void Update(Integer id, String name, String surname, String second_name, String phone_number, String mail)
+    public void update(Teacher teacher)
     {
         jdbcTemplate.update("UPDATE \"Teacher\" SET \"name\" = ?, \"surname\" = ?, \"second_name\" = ?," +
-                " \"phone_number\" = ?, \"mail\" = ? WHERE \"id\" = ?", name, surname, second_name, phone_number,
-                mail, id);
+                " \"phone_number\" = ?, \"mail\" = ? WHERE \"id\" = ?", teacher.getName(), teacher.getSurname(),
+                teacher.getSecond_name(), teacher.getPhone_number(), teacher.getMail(), teacher.getId());
     }
 
     @Override
-    public void Delete(Integer id)
+    public void delete(Integer id)
     {
         jdbcTemplate.update("DELETE FROM \"Teacher\" WHERE \"id\" = ?", id);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"Teacher\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"Teacher\"", Integer.class);
     }

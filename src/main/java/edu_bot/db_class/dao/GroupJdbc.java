@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class GroupJdbc implements GroupDao
@@ -15,12 +16,14 @@ public class GroupJdbc implements GroupDao
     private final JdbcTemplate jdbcTemplate;
     private final ScheduleDao scheduleDao;
     private final UserDao userDao;
+    private final Consumer<Group> groupConsumer;
 
-    public GroupJdbc(JdbcTemplate jdbcTemplate, ScheduleDao scheduleDao, UserDao userDao)
+    public GroupJdbc(JdbcTemplate jdbcTemplate, ScheduleDao scheduleDao, UserDao userDao, Consumer<Group> groupConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
         this.scheduleDao = scheduleDao;
         this.userDao = userDao;
+        this.groupConsumer = groupConsumer;
     }
 
     @Override
@@ -59,48 +62,39 @@ public class GroupJdbc implements GroupDao
     }
 
     @Override
-    public void Insert(Integer id, String groupName, String fileName)
+    public void insert(Group group)
     {
         jdbcTemplate.update("INSERT INTO \"Group\" (\"id\", \"groupName\", \"fileName\") VALUES (?, ?, ?)",
-                id, groupName, fileName);
+                group.getId(), group.getGroupName(), group.getFileName());
     }
 
     @Override
-    public void Merge(Integer id, String groupName, String fileName)
+    public void merge(Group group)
     {
-        jdbcTemplate.update("MERGE INTO \"Group\" (\"id\", \"groupName\", \"fileName\") KEY(\"id\") " +
-                "VALUES (?, ?, ?)", id, groupName, fileName);
+        groupConsumer.accept(group);
     }
 
-    /*@Override
-    public void Merge(Integer id, String groupName, String fileName)
-    {
-        jdbcTemplate.update("INSERT INTO \"Group\" (\"id\", \"groupName\", \"fileName\") " +
-                "VALUES (?, ?, ?) ON CONFLICT (\"id\") DO UPDATE SET \"groupName\" = ?, \"fileName\" = ?",
-                id, groupName, fileName, groupName, fileName);
-    }*/
-
     @Override
-    public void Update(Integer id, String groupName, String fileName)
+    public void update(Group group)
     {
         jdbcTemplate.update("UPDATE \"Group\" SET \"groupName\" = ?, \"fileName\" = ? WHERE \"id\" = ?",
-                groupName, fileName, id);
+                group.getGroupName(), group.getFileName(), group.getId());
     }
 
     @Override
-    public void Delete(Integer id)
+    public void delete(Integer id)
     {
         jdbcTemplate.update("DELETE FROM \"Group\" WHERE \"id\" = ?", id);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"Group\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"Group\"", Integer.class);
     }

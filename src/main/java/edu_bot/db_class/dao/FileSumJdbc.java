@@ -7,15 +7,18 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class FileSumJdbc implements FileSumDao
 {
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<FileSum> fileSumConsumer;
 
-    public FileSumJdbc(JdbcTemplate jdbcTemplate)
+    public FileSumJdbc(JdbcTemplate jdbcTemplate, Consumer<FileSum> fileSumConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
+        this.fileSumConsumer = fileSumConsumer;
     }
 
 
@@ -38,31 +41,32 @@ public class FileSumJdbc implements FileSumDao
     }
 
     @Override
-    public void Insert(String fileName, String md5)
+    public void insert(FileSum fileSum)
     {
-        jdbcTemplate.update("INSERT INTO \"FileSum\" (\"fileName\", \"md5\") VALUES (?, ?)", fileName, md5);
+        jdbcTemplate.update("INSERT INTO \"FileSum\" (\"fileName\", \"md5\") VALUES (?, ?)", fileSum.getFileName(),
+                fileSum.getMd5());
     }
 
     @Override
-    public void Merge(String fileName, String md5)
+    public void merge(FileSum fileSum)
     {
-        jdbcTemplate.update("MERGE INTO \"FileSum\" (\"fileName\", \"md5\") KEY(\"fileName\") VALUES (?, ?)", fileName, md5);
+        fileSumConsumer.accept(fileSum);
     }
 
     @Override
-    public void Update(String fileName, String md5)
+    public void update(FileSum fileSum)
     {
-        jdbcTemplate.update("UPDATE \"FileSum\" SET \"md5\" = ? WHERE \"fileName\" = ?", md5, fileName);
+        jdbcTemplate.update("UPDATE \"FileSum\" SET \"md5\" = ? WHERE \"fileName\" = ?", fileSum.getMd5(), fileSum.getFileName());
     }
 
     @Override
-    public void Delete(String fileName)
+    public void delete(String fileName)
     {
         jdbcTemplate.update("DELETE FROM \"FileSum\" WHERE \"fileName\" = ?",  fileName);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"FileSum\"");
     }

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class UserJdbc implements UserDao
@@ -14,11 +15,13 @@ public class UserJdbc implements UserDao
 
     private final  ScheduleDao scheduleDao;
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<User> userConsumer;
 
-    public UserJdbc(ScheduleDao scheduleDao, JdbcTemplate jdbcTemplate)
+    public UserJdbc(ScheduleDao scheduleDao, JdbcTemplate jdbcTemplate, Consumer<User> userConsumer)
     {
         this.scheduleDao = scheduleDao;
         this.jdbcTemplate = jdbcTemplate;
+        this.userConsumer = userConsumer;
     }
 
     @Override
@@ -65,49 +68,40 @@ public class UserJdbc implements UserDao
     }
 
     @Override
-    public void Insert(Long chatId, String chatName, Integer groupId)
+    public void insert(User user)
     {
         jdbcTemplate.update("INSERT INTO \"User\" (\"chatId\", \"chatName\", \"groupId\") VALUES (?, ?, ?)",
-                chatId, chatName, groupId);
+                user.getChatId(), user.getChatName(), user.getGroupId());
 
     }
 
     @Override
-    public void Merge(Long chatId, String chatName, Integer groupId)
+    public void merge(User user)
     {
-        jdbcTemplate.update("MERGE INTO \"User\" (\"chatId\", \"chatName\", \"groupId\") KEY(\"chatId\") " +
-                "VALUES (?, ?, ?)", chatId, chatName, groupId);
-        }
-
-    /*@Override
-    public void Merge(Long chatId, String chatName, Integer groupId)
-    {
-        jdbcTemplate.update("INSERT INTO \"User\" (\"chatId\", \"chatName\", \"groupId\") VALUES (?, ?, ?) ON CONFLICT " +
-                "(\"chatId\") DO UPDATE SET \"chatName\" = ?, \"groupId\" = ?", chatId, chatName, groupId, chatName, groupId);
-
-    }*/
+        userConsumer.accept(user);
+    }
 
     @Override
-    public void Update(Long chatId, String chatName, Integer groupId)
+    public void update(User user)
     {
         jdbcTemplate.update("UPDATE \"User\" SET \"chatName\" = ?, \"groupId\" = ? WHERE \"chatId\" = ?",
-                chatName, groupId, chatId);
+                user.getChatName(), user.getGroupId(), user.getChatId());
     }
 
     @Override
-    public void Delete(Long chatId)
+    public void delete(Long chatId)
     {
         jdbcTemplate.update("DELETE FROM \"User\" WHERE \"chatId\" = ?", chatId);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"User\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"User\"", Integer.class);
     }

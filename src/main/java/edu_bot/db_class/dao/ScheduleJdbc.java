@@ -1,12 +1,15 @@
 package edu_bot.db_class.dao;
 
+import edu_bot.db_class.model.GroupSchedule;
 import edu_bot.db_class.model.Schedule;
+import edu_bot.db_class.model.UserSchedule;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class ScheduleJdbc implements ScheduleDao
@@ -15,16 +18,23 @@ public class ScheduleJdbc implements ScheduleDao
     private final ClassTimeDao classTimeDao;
     private final ClassroomDao classroomDao;
     private final JdbcTemplate jdbcTemplate;
-    private final  SubjectTypeDao subjectTypeDao;
+    private final SubjectTypeDao subjectTypeDao;
+    private final Consumer<Schedule> scheduleConsumer;
+    private final Consumer<GroupSchedule> groupScheduleConsumer;
+    private final Consumer<UserSchedule> userScheduleConsumer;
 
     public ScheduleJdbc(SubjectDao subjectDao, ClassroomDao classroomDao, ClassTimeDao classTimeDao,
-                        JdbcTemplate jdbcTemplate, SubjectTypeDao subjectTypeDao)
+                        JdbcTemplate jdbcTemplate, SubjectTypeDao subjectTypeDao, Consumer<Schedule> scheduleConsumer,
+                        Consumer<GroupSchedule> groupScheduleConsumer, Consumer<UserSchedule> userScheduleConsumer)
     {
         this.subjectDao = subjectDao;
         this.classroomDao = classroomDao;
         this.classTimeDao = classTimeDao;
         this.jdbcTemplate = jdbcTemplate;
         this.subjectTypeDao = subjectTypeDao;
+        this.scheduleConsumer = scheduleConsumer;
+        this.groupScheduleConsumer = groupScheduleConsumer;
+        this.userScheduleConsumer = userScheduleConsumer;
     }
 
     @Override
@@ -149,65 +159,76 @@ public class ScheduleJdbc implements ScheduleDao
     }
 
     @Override
-    public void Insert(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-                       Integer dayOfWeek, Integer numberOfWeek)
+    public void insert(Schedule schedule)
     {
         jdbcTemplate.update("INSERT INTO \"Schedule\" (\"id\", \"classNumber\",  \"classroomId\",  " +
                 "\"subjectId\", \"subjectTypeId\", \"dayOfWeek\", \"numberOfWeek\") VALUES (?, ?, ?, ?, ?, ?, ?)",
-                id, classNumber, classroomId, subjectId, subjectTypeId, dayOfWeek, numberOfWeek);
+                schedule.getId(), schedule.getClassTime(), schedule.getClassroomId(), schedule.getSubjectId(),
+                schedule.getSubjectTypeId(), schedule.getDayOfWeek(), schedule.getNumberOfWeek());
     }
 
     @Override
-    public void Merge(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-                      Integer dayOfWeek, Integer numberOfWeek)
+    public void insertGroupSchedule(GroupSchedule groupSchedule)
     {
-        jdbcTemplate.update("MERGE INTO \"Schedule\" (\"id\", \"classNumber\",  \"classroomId\",  " +
-                        "\"subjectId\", \"subjectTypeId\", \"dayOfWeek\", \"numberOfWeek\") KEY(\"id\") VALUES (?, ?, ?, ?, ?, ?, ?)",
-                id, classNumber, classroomId, subjectId, subjectTypeId, dayOfWeek, numberOfWeek);
-       }
-
-    /*@Override
-    public void Merge(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-                      Integer dayOfWeek, Integer numberOfWeek)
-    {
-        jdbcTemplate.update("INSERT INTO \"Schedule\" (\"id\", \"classNumber\", \"classroomId\",  " +
-                "\"subjectId\", \"subjectTypeId\", \"dayOfWeek\", \"numberOfWeek\") VALUES (?, ?, ?, ?, ?, ?, ?)" +
-                "ON CONFLICT (\"id\") DO UPDATE SET \"classNumber\" = ?, \"classroomId\" = ?, \"subjectId\" = ?, " +
-                "\"subjectTypeId\" = ?, \"dayOfWeek\" = ?, \"numberOfWeek\" = ?", id, classNumber, classroomId,
-                subjectId, subjectTypeId, dayOfWeek, numberOfWeek, classNumber, classroomId, subjectId, subjectTypeId,
-                dayOfWeek, numberOfWeek);
-    }*/
+        jdbcTemplate.update("INSERT INTO \"Group_Schedule\" (\"groupId\", \"scheduleId\") VALUES (?, ?)",
+                groupSchedule.getGroupId(), groupSchedule.getScheduleId());
+    }
 
     @Override
-    public void Update(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-                       Integer dayOfWeek, Integer numberOfWeek)
+    public void insertUserSchedule(UserSchedule userSchedule)
+    {
+        jdbcTemplate.update("INSERT INTO \"User_Schedule\" (\"userId\", \"scheduleId\") VALUES (?, ?)",
+                userSchedule.getUserId(), userSchedule.getScheduleId());
+    }
+
+    @Override
+    public void merge(Schedule schedule)
+    {
+        scheduleConsumer.accept(schedule);
+    }
+
+    @Override
+    public void mergeGroupSchedule(GroupSchedule groupSchedule)
+    {
+        groupScheduleConsumer.accept(groupSchedule);
+    }
+
+    @Override
+    public void mergeUserSchedule(UserSchedule userSchedule)
+    {
+        userScheduleConsumer.accept(userSchedule);
+    }
+
+    @Override
+    public void update(Schedule schedule)
     {
         jdbcTemplate.update("UPDATE \"Schedule\" SET \"groupName\" = ?, \"classNumber\" = ?," +
                 " \"classroomId\" = ?, \"subjectId\" = ?, \"subjectTypeId\" = ?, \"dayOfWeek\" = ?, \"numberOfWeek\" = ?" +
-                " WHERE \"id\" = ?", classNumber, classroomId, subjectId, subjectTypeId, dayOfWeek, numberOfWeek, id);
+                " WHERE \"id\" = ?", schedule.getClassTime(), schedule.getClassroomId(), schedule.getSubjectId(),
+                schedule.getSubjectTypeId(), schedule.getDayOfWeek(), schedule.getNumberOfWeek(), schedule.getId());
     }
 
     @Override
-    public void Delete(Integer id)
+    public void delete(Integer id)
     {
         jdbcTemplate.update("DELETE FROM \"Schedule\" WHERE \"id\" = ?", id);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"Schedule\"");
     }
 
     @Override
-    public void DeleteUserSchedule(Long userId)
+    public void deleteUserSchedule(Long userId)
     {
         jdbcTemplate.update("DELETE FROM \"Schedule\"  WHERE \"id\" IN (SELECT \"scheduleId\" " +
                 "FROM \"User_Schedule\" WHERE \"userId\" =?)", userId);
     }
 
     @Override
-    public void DeleteGroupSchedule(Integer groupId)
+    public void deleteGroupSchedule(Integer groupId)
     {
         jdbcTemplate.update("DELETE  FROM \"Group_Schedule\"  WHERE \"groupId\" = ?", groupId);
     }
@@ -217,48 +238,4 @@ public class ScheduleJdbc implements ScheduleDao
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"Schedule\"", Integer.class);
     }
-
-    @Override
-    public void Insert_Group_Schedule(Integer groupId, Integer scheduleId)
-    {
-        jdbcTemplate.update("INSERT INTO \"Group_Schedule\" (\"groupId\", \"scheduleId\") VALUES (?, ?)",
-                groupId, scheduleId);
-    }
-
-    @Override
-    public void Merge_Group_Schedule(Integer groupId, Integer scheduleId)
-    {
-        jdbcTemplate.update("MERGE INTO \"Group_Schedule\" (\"groupId\", \"scheduleId\") KEY(\"groupId\", " +
-                "\"scheduleId\") VALUES (?, ?)", groupId, scheduleId);
-    }
-
-    /*@Override
-    public void Merge_Group_Schedule(Integer groupId, Integer scheduleId)
-    {
-        jdbcTemplate.update("INSERT INTO \"Group_Schedule\" (\"groupId\", \"scheduleId\") VALUES (?, ?)" +
-                "ON CONFLICT (\"groupId\", \"scheduleId\") DO UPDATE SET \"groupId\" = ?, \"scheduleId\" = ?", groupId,
-                scheduleId, groupId, scheduleId);
-    }*/
-
-    @Override
-    public void Insert_User_Schedule(Long userId, Integer scheduleId)
-    {
-        jdbcTemplate.update("INSERT INTO \"User_Schedule\" (\"userId\", \"scheduleId\") VALUES (?, ?)",
-                userId, scheduleId);
-    }
-
-    @Override
-    public void Merge_User_Schedule(Long userId, Integer scheduleId)
-    {
-        jdbcTemplate.update("MERGE INTO \"User_Schedule\" (\"userId\", \"scheduleId\") KEY(\"userId\"," +
-                " \"scheduleId\") VALUES (?, ?)", userId, scheduleId);
-    }
-
-    /*@Override
-    public void Merge_User_Schedule(Long userId, Integer scheduleId)
-    {
-        jdbcTemplate.update("INSERT INTO \"User_Schedule\" (\"userId\", \"scheduleId\") VALUES (?, ?)" +
-                "ON CONFLICT (\"userId\", \"scheduleId\") DO UPDATE SET \"userId\" = ?, \"scheduleId\" = ?", userId,
-                scheduleId, userId, scheduleId);
-    }*/
 }

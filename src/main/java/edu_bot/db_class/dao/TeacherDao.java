@@ -24,16 +24,16 @@ public interface TeacherDao
 
     List<Teacher> getTeachers();
 
-    void Insert(Integer id, String name, String surname, String second_name, String phone_number, String mail);
+    void insert(Teacher teacher);
 
-    void Merge(Integer id, String name, String surname, String second_name, String phone_number, String mail);
+    void merge(Teacher teacher);
 
-    void Update(Integer id, String name, String surname, String second_name, String phone_number, String mail);
+    void update(Teacher teacher);
 
-    void Delete(Integer id);
+    void delete(Integer id);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }

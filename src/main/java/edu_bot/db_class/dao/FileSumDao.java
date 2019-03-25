@@ -12,13 +12,13 @@ public interface FileSumDao
 
     List<FileSum> getFileSumsForName(String fileName);
 
-    void Insert(String fileName, String md5);
+    void insert(FileSum fileSum);
 
-    void Merge(String fileName, String md5);
+    void merge(FileSum fileSum);
 
-    void Update(String fileName, String md5);
+    void update(FileSum fileSum);
 
-    void Delete(String fileName);
+    void delete(String fileName);
 
-    void DeleteAll();
+    void deleteAll();
 }

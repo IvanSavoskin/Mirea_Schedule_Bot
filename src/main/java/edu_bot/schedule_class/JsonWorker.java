@@ -85,26 +85,42 @@ public class JsonWorker
             jsonObject = new JSONObject();
             jsonObject = (JSONObject)ar.get(i);
 
-            if (jsonObject.get("dayOfWeek").toString().matches("[1-7]"))
-                dayOfWeek = toIntExact((long)jsonObject.get("dayOfWeek"));
+            Object jsonDayOfWeek = jsonObject.get("dayOfWeek");
+            Object jsonNumberOfWeek = jsonObject.get("numberOfWeek");
+            Object jsonClassNumber = jsonObject.get("classNumber");
+
+            String teacherSurname = jsonObject.get("teacherSurname").toString();
+            String teacherName = jsonObject.get("teacherName").toString();
+            String teacherSecondName = jsonObject.get("teacherSecondName").toString();
+            String teacherPhone = jsonObject.get("teacherPhone").toString();
+            String teacherMail = jsonObject.get("teacherMail").toString();
+
+            String subjectName = jsonObject.get("subjectName").toString();
+
+            String subjectTypeName = jsonObject.get("subjectType").toString();
+
+            String classroomName = jsonObject.get("classroom").toString();
+
+
+            if (jsonDayOfWeek.toString().matches("[1-7]"))
+                dayOfWeek = toIntExact((long)jsonDayOfWeek);
             else
             {
                 check = false;
                 break;
             }
 
-            if (jsonObject.get("numberOfWeek").toString().matches("[1-7]{1,2}") ||
-                    jsonObject.get("numberOfWeek").toString().equals("-2") ||
-                    jsonObject.get("numberOfWeek").toString().equals("-1"))
-                numberOfWeek = toIntExact((long)jsonObject.get("numberOfWeek"));
+            if (jsonNumberOfWeek.toString().matches("[1-7]{1,2}") || jsonNumberOfWeek.toString().equals("-2") ||
+                    jsonNumberOfWeek.toString().equals("-1"))
+                numberOfWeek = toIntExact((long)jsonNumberOfWeek);
             else
             {
                 check = false;
                 break;
             }
 
-            if (jsonObject.get("classNumber").toString().matches("[1-8]"))
-                classNumber = toIntExact((long)jsonObject.get("classNumber"));
+            if (jsonClassNumber.toString().matches("[1-8]"))
+                classNumber = toIntExact((long)jsonClassNumber);
             else
             {
                 check = false;
@@ -112,44 +128,46 @@ public class JsonWorker
             }
 
 
-            List<Teacher> teacher = teacherDao.getTeacherForCustomSchedule(jsonObject.get("teacherSurname").toString(),
-                    jsonObject.get("teacherName").toString(), jsonObject.get("teacherSecondName").toString(),
-                    jsonObject.get("teacherPhone").toString(), jsonObject.get("teacherMail").toString());
-            if (teacher.size() == 1)
-                teacherId = teacher.get(0).getId();
+            List<Teacher> teachers = teacherDao.getTeacherForCustomSchedule(teacherSurname, teacherName,
+                    teacherSecondName, teacherPhone, teacherMail);
+            if (teachers.size() == 1)
+                teacherId = teachers.get(0).getId();
             else
             {
-                teacherId = teacherDao.Count() + 1;
-                teacherDao.Merge(teacherId, jsonObject.get("teacherName").toString(),
-                        jsonObject.get("teacherSurname").toString(), jsonObject.get("teacherSecondName").toString(),
-                        jsonObject.get("teacherPhone").toString(), jsonObject.get("teacherMail").toString());
+                teacherId = teacherDao.count() + 1;
+                Teacher teacher = new Teacher(teacherId, teacherName, teacherSurname, teacherSecondName, teacherPhone,
+                        teacherMail);
+                teacherDao.merge(teacher);
             }
 
-            List<Subject> subject = subjectDao.getSubjectForParse(jsonObject.get("subjectName").toString(), teacherId);
-            if (subject.size() == 1)
-                subjectId = subject.get(0).getId();
+            List<Subject> subjects = subjectDao.getSubjectForParse(subjectName, teacherId);
+            if (subjects.size() == 1)
+                subjectId = subjects.get(0).getId();
             else
             {
-                subjectId = subjectDao.Count() + 1;
-                subjectDao.Merge(subjectId, jsonObject.get("subjectName").toString(), teacherId);
+                subjectId = subjectDao.count() + 1;
+                Subject subject = new Subject(subjectId, subjectName, teacherId);
+                subjectDao.merge(subject);
             }
 
-            List<SubjectType> subjectType = subjectTypeDao.getSubjectTypeForParse(jsonObject.get("subjectType").toString());
-            if (subjectType.size() == 1)
-                subjectTypeId = subjectType.get(0).getId();
+            List<SubjectType> subjectTypes = subjectTypeDao.getSubjectTypeForParse(subjectTypeName);
+            if (subjectTypes.size() == 1)
+                subjectTypeId = subjectTypes.get(0).getId();
             else
             {
-                subjectTypeId = subjectTypeDao.Count() + 1;
-                subjectTypeDao.Merge(subjectTypeId, subjectId, jsonObject.get("subjectType").toString());
+                subjectTypeId = subjectTypeDao.count() + 1;
+                SubjectType subjectType = new SubjectType(subjectTypeId, subjectTypeName);
+                subjectTypeDao.merge(subjectType);
             }
 
-            List<Classroom> classroom = classroomDao.getClassroomForParse(jsonObject.get("classroom").toString());
-            if (classroom.size() == 1)
-                classroomId = classroom.get(0).getId();
+            List<Classroom> classrooms = classroomDao.getClassroomForParse(classroomName);
+            if (classrooms.size() == 1)
+                classroomId = classrooms.get(0).getId();
             else
             {
-                classroomId = classroomDao.Count() + 1;
-                classroomDao.Merge(classroomId, jsonObject.get("classroom").toString(), null);
+                classroomId = classroomDao.count() + 1;
+                Classroom classroom = new Classroom(classroomId, classroomName, null);
+                classroomDao.merge(classroom);
             }
 
             List<Schedule> schedules = scheduleDao.getScheduleForParse(classNumber, classroomId, subjectId,
@@ -160,15 +178,15 @@ public class JsonWorker
             else
             {
                 scheduleId = scheduleDao.Count() + 1;
-                scheduleDao.Merge(scheduleId, classNumber, classroomId, subjectId, subjectTypeId, dayOfWeek,
-                        numberOfWeek);
+                Schedule schedule = new Schedule(scheduleId, classNumber, classroomId, subjectId, subjectTypeId,
+                        numberOfWeek, dayOfWeek);
+                scheduleDao.merge(schedule);
             }
 
-            scheduleDao.Insert_User_Schedule(chatId, scheduleId);
-
+            UserSchedule userSchedule = new UserSchedule(chatId, scheduleId);
+            scheduleDao.insertUserSchedule(userSchedule);
         }
 
         return check;
     }
-
 }

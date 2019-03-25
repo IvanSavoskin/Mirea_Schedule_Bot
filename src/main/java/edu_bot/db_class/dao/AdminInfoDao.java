@@ -1,6 +1,8 @@
 package edu_bot.db_class.dao;
 
 import edu_bot.db_class.model.AdminInfo;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 
@@ -14,13 +16,13 @@ public interface AdminInfoDao
 
     List<AdminInfo> getAdminInfosForLogin(String login);
 
-    void Insert(long chatName, String login, String password);
+    void insert(AdminInfo adminInfo);
 
-    void Merge(long chatName, String login, String password);
+    void merge(AdminInfo adminInfo);
 
-    void Update(long chatName, String login, String password);
+    void update(AdminInfo adminInfo);
 
-    void Delete(long chatName);
+    void delete(long chatName);
 
-    void DeleteAll();
+    void deleteAll();
 }

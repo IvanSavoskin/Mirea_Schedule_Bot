@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.Date;
 
 @Repository
 public class EducationDateJdbc implements EducationDateDao
@@ -24,35 +23,25 @@ public class EducationDateJdbc implements EducationDateDao
     }
 
     @Override
-    public void Merge(Date semesterStartDate, Date testSessionStartDate, Date examSessionStartDate, Date examSessionStopDate)
-    {
-        jdbcTemplate.update("MERGE INTO \"EducationDate\" (\"semesterStartDate\", \"testSessionStartDate\"," +
-                        " \"examSessionStartDate\", \"examSessionStopDate\") KEY(\"semesterStartDate\", \"testSessionStartDate\"," +
-                        "\"examSessionStartDate\", \"examSessionStopDate\") VALUES (?, ?, ?, ?)",
-                semesterStartDate, testSessionStartDate, examSessionStartDate, examSessionStopDate);
-    }
-
-    /*@Override
-    public void Merge(Date semesterStartDate, Date testSessionStartDate, Date examSessionStartDate, Date examSessionStopDate)
+    public void insert(EducationDate educationDate)
     {
         jdbcTemplate.update("INSERT INTO \"EducationDate\" (\"semesterStartDate\", \"testSessionStartDate\"," +
-                        "\"examSessionStartDate\", \"examSessionStopDate\") VALUES (?, ?, ?, ?) " +
-                        "ON CONFLICT (\"semesterStartDate\") DO UPDATE SET \"semesterStartDate\" = ?, \"testSessionStartDate\" = ?, " +
-                        "\"examSessionStartDate\" = ?, \"examSessionStopDate\" = ?", semesterStartDate, testSessionStartDate,
-                examSessionStartDate, examSessionStopDate, semesterStartDate, testSessionStartDate, examSessionStartDate,
-                examSessionStopDate);
-    }*/
-
-    @Override
-    public void Update(Date semesterStartDate, Date testSessionStartDate, Date examSessionStartDate, Date examSessionStopDate)
-    {
-        jdbcTemplate.update("UPDATE \"EducationDate\" SET \"semesterStartDate\" = ?, \"testSessionStartDate\" = ?, " +
-                "\"examSessionStartDate\" = ?, \"examSessionStopDate\" = ? ", semesterStartDate, testSessionStartDate,
-                examSessionStartDate, examSessionStopDate);
+                        "\"examSessionStartDate\", \"examSessionStopDate\") VALUES (?, ?, ?, ?)",
+                educationDate.getSemesterStartDate(), educationDate.getTestSessionStartDate(),
+                educationDate.getExamSessionStartDate(), educationDate.getExamSessionStopDate());
     }
 
     @Override
-    public void DeleteAll()
+    public void update(EducationDate educationDate)
+    {
+        jdbcTemplate.update("UPDATE \"EducationDate\" SET \"semesterStartDate\" = ?, \"testSessionStartDate\" = ?, " +
+                "\"examSessionStartDate\" = ?, \"examSessionStopDate\" = ? ", educationDate.getSemesterStartDate(),
+                educationDate.getTestSessionStartDate(), educationDate.getExamSessionStartDate(),
+                educationDate.getExamSessionStopDate());
+    }
+
+    @Override
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"EducationDate\"");
     }

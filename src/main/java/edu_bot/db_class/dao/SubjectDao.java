@@ -18,16 +18,16 @@ public interface SubjectDao
 
     Subject getSubjectForSchedule(Integer id);
 
-    void Insert(Integer id, String subjectName, Integer teacherId);
+    void insert(Subject subject);
 
-    void Merge(Integer id, String subjectName, Integer teacherId);
+    void merge(Subject subject);
 
-    void Update(Integer id, String subjectName, Integer teacherId);
+    void update(Subject subject);
 
-    void Delete(Integer id);
+    void delete(Integer id);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }

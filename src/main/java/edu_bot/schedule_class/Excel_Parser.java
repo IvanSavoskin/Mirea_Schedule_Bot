@@ -1,9 +1,8 @@
 package edu_bot.schedule_class;
 
 import edu_bot.db_class.dao.*;
-import edu_bot.db_class.model.Group;
-import edu_bot.db_class.model.User;
-import edu_bot.main_class.AppConfig;
+import edu_bot.db_class.model.*;
+import edu_bot.main_class.config_class.AppConfig;
 import edu_bot.main_class.Bot;
 import edu_bot.main_class.Main;
 import org.apache.poi.ss.usermodel.*;
@@ -54,11 +53,11 @@ public class Excel_Parser
 
     private void excelParser(String fileName) throws IOException
     {
-        Integer groupId = groupDao.Count();
-        Integer classroomId = classroomDao.Count();
-        Integer subjectId = subjectDao.Count();
-        Integer subjectTypeId = subjectTypeDao.Count();
-        Integer teacherId = teacherDao.Count();
+        Integer groupId = groupDao.count();
+        Integer classroomId = classroomDao.count();
+        Integer subjectId = subjectDao.count();
+        Integer subjectTypeId = subjectTypeDao.count();
+        Integer teacherId = teacherDao.count();
         Integer scheduleId = scheduleDao.Count();
         String group;
         String text1 = "В данный момент расписание для группы, расписание которого вы " +
@@ -107,14 +106,16 @@ public class Excel_Parser
                                 if (groupDao.getGroupForName(group).size() == 0)
                                 {
                                     groupId++;
-                                    groupDao.Merge(groupId, group, fileName);
+                                    Group gr = new Group(groupId, group, fileName);
+                                    groupDao.merge(gr);
                                     currentGroupId = groupId;
                                 }
                                 else
                                 {
                                     Group gr = groupDao.getGroupForName(group).get(0);
                                     currentGroupId = gr.getId();
-                                    groupDao.Merge(currentGroupId, gr.getGroupName(), fileName);
+                                    gr.setFileName(fileName);
+                                    groupDao.merge(gr);
                                 }
 
                                 List<User> users = userDao.getUsersForGroup(currentGroupId);
@@ -126,7 +127,7 @@ public class Excel_Parser
 
                                 if (scheduleDao.getGroupSchedules(currentGroupId).size() > 0)
                                 {
-                                    scheduleDao.DeleteGroupSchedule(currentGroupId);
+                                    scheduleDao.deleteGroupSchedule(currentGroupId);
                                 }
 
                                 int classTime = 1;
@@ -227,22 +228,22 @@ public class Excel_Parser
                                         switch (week.toLowerCase())
                                         {
                                             case ("i"):
-                                                numberOfWeek = 1;
+                                                numberOfWeek = -1;
                                                 break;
                                             case ("ii"):
-                                                numberOfWeek = 2;
+                                                numberOfWeek = -2;
                                                 break;
                                         }
                                     }
                                     else if (cellSchedule.getCellTypeEnum() == CellType.BLANK && !cellSchedule.getCellStyle().getBorderTopEnum().
                                             equals(BorderStyle.NONE) && !cellSchedule.getCellStyle().getBorderBottomEnum().
                                             equals(BorderStyle.NONE))
-                                        if (numberOfWeek == 1 && dayOfWeek != 0)
-                                            numberOfWeek++;
-                                        else if (numberOfWeek == 2 && dayOfWeek != 0)
-                                            numberOfWeek = 1;
+                                        if (numberOfWeek == -1 && dayOfWeek != 0)
+                                            numberOfWeek--;
+                                        else if (numberOfWeek == -2 && dayOfWeek != 0)
+                                            numberOfWeek = -1;
 
-                                    if ((classTime == 6) && (dayOfWeek == 6) && (numberOfWeek == 2))
+                                    if ((classTime == 6) && (dayOfWeek == 6) && (numberOfWeek == -2))
                                         condition++;
 
                                     for (int i = 4; i < cellNumber; i++)
@@ -346,12 +347,12 @@ public class Excel_Parser
                                         Integer currentClassroomId;
                                         Integer currentSubjectTypeId;
                                         Integer currentScheduleId;
-                                        Integer currentNumberOfWeek;
 
                                         if (teacherDao.getTeacherForParse(teacherSurname, teacherName, teacherSecondName).size() == 0)
                                         {
-                                            teacherDao.Merge(teacherId, teacherName, teacherSurname, teacherSecondName,
-                                                    null, null);
+                                            Teacher mergeTeacher = new Teacher(teacherId, teacherName, teacherSurname,
+                                                    teacherSecondName, null, null);
+                                            teacherDao.merge(mergeTeacher);
                                             currentTeacherId = teacherId;
                                             teacherId++;
                                         }
@@ -361,7 +362,8 @@ public class Excel_Parser
 
                                         if (subjectDao.getSubjectForParse(subject, currentTeacherId).size() == 0)
                                         {
-                                            subjectDao.Merge(subjectId, subject, currentTeacherId);
+                                            Subject mergeSubject = new Subject(subjectId, subject, currentTeacherId);
+                                            subjectDao.merge(mergeSubject);
                                             currentSubjectId = subjectId;
                                             subjectId++;
                                         }
@@ -371,7 +373,8 @@ public class Excel_Parser
 
                                         if (classroomDao.getClassroomForParse(classroom).size() == 0)
                                         {
-                                            classroomDao.Merge(classroomId, classroom, null);
+                                            Classroom mergeClassroom = new Classroom(classroomId, classroom, null);
+                                            classroomDao.merge(mergeClassroom);
                                             currentClassroomId = classroomId;
                                             classroomId++;
                                         }
@@ -380,31 +383,36 @@ public class Excel_Parser
 
                                         if (subjectTypeDao.getSubjectTypeForParse(subjectType).size() == 0)
                                         {
-                                            subjectTypeDao.Merge(subjectTypeId, currentSubjectId, subjectType);
+                                            SubjectType mergeSubjectType = new SubjectType(subjectTypeId, subjectType);
+                                            subjectTypeDao.merge(mergeSubjectType);
                                             currentSubjectTypeId = subjectTypeId;
                                             subjectTypeId++;
                                         }
                                         else
                                             currentSubjectTypeId = subjectTypeDao.getSubjectTypeForParse(subjectType).get(0).getId();
 
-                                        if (numberOfWeek == 1)
-                                            currentNumberOfWeek = -1;
-                                        else currentNumberOfWeek = -2;
+                                        List<Schedule> schedules = scheduleDao.getScheduleForParse(classTime,
+                                                currentClassroomId, currentSubjectId, currentSubjectTypeId,
+                                                numberOfWeek, dayOfWeek);
 
-                                        if (scheduleDao.getScheduleForParse(classTime, currentClassroomId, currentSubjectId,
-                                                currentSubjectTypeId, currentNumberOfWeek, dayOfWeek).size() == 0)
+                                        if (schedules.size() == 0)
                                         {
-                                            scheduleDao.Merge(scheduleId, classTime, currentClassroomId, currentSubjectId,
-                                                    currentSubjectTypeId, dayOfWeek, currentNumberOfWeek);
-                                            scheduleDao.Merge_Group_Schedule(currentGroupId, scheduleId);
+                                            Schedule mergeSchedule = new Schedule(scheduleId, classTime,
+                                                    currentSubjectId, currentSubjectTypeId, currentClassroomId,
+                                                    dayOfWeek, numberOfWeek);
+                                            scheduleDao.merge(mergeSchedule);
+
+                                            GroupSchedule groupSchedule = new GroupSchedule(currentGroupId, scheduleId);
+                                            scheduleDao.mergeGroupSchedule(groupSchedule);
+
                                             scheduleId++;
                                         }
                                         else
                                         {
-                                            currentScheduleId = scheduleDao.getScheduleForParse(classTime,
-                                                    currentClassroomId, currentSubjectId, currentSubjectTypeId,
-                                                    currentNumberOfWeek, dayOfWeek).get(0).getId();
-                                            scheduleDao.Merge_Group_Schedule(currentGroupId, currentScheduleId);
+                                            currentScheduleId = schedules.get(0).getId();
+
+                                            GroupSchedule groupSchedule = new GroupSchedule(currentGroupId, currentScheduleId);
+                                            scheduleDao.mergeGroupSchedule(groupSchedule);
                                         }
 
                                     }
@@ -477,9 +485,11 @@ public class Excel_Parser
 
         Main._Log.info("Получена дата конца экзаменационной сессии: " + examSessionStopDate + "\n");
 
-        educationDateDao.DeleteAll();
+        educationDateDao.deleteAll();
 
-        educationDateDao.Merge(semesterStartDate, testSessionStartDate, examSessionStartDate, examSessionStopDate);
+        EducationDate educationDate = new EducationDate(semesterStartDate, testSessionStartDate, examSessionStartDate,
+                examSessionStopDate);
+        educationDateDao.insert(educationDate);
     }
 
     public void autoExcelParser()

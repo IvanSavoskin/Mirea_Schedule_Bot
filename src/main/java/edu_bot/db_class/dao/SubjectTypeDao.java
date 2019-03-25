@@ -17,16 +17,16 @@ public interface SubjectTypeDao
 
     SubjectType getSubjectTypeForSubject(Integer subjectId);
 
-    void Insert(Integer id, Integer subjectId, String typeName);
+    void insert(SubjectType subjectType);
 
-    void Merge(Integer id, Integer subjectId, String typeName);
+    void merge(SubjectType subjectType);
 
-    void Update(Integer id, Integer subjectId, String typeName);
+    void update(SubjectType subjectType);
 
-    void Delete(Integer id);
+    void delete(Integer id);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }

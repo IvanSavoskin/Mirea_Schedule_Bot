@@ -15,16 +15,16 @@ public interface ClassroomDao
 
     Classroom getClassroomForSchedule(Integer classroomId);
 
-    void Insert(Integer id, String name, String pic);
+    void insert(Classroom classroom);
 
-    void Merge(Integer id, String name, String pic);
+    void merge(Classroom classroom);
 
-    void Update(Integer id, String name, String pic);
+    void update(Classroom classroom);
 
-    void Delete(Integer id);
+    void delete(Integer id);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }

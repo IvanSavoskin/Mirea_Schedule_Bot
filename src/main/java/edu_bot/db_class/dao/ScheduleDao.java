@@ -1,6 +1,8 @@
 package edu_bot.db_class.dao;
 
+import edu_bot.db_class.model.GroupSchedule;
 import edu_bot.db_class.model.Schedule;
+import edu_bot.db_class.model.UserSchedule;
 
 import java.util.List;
 
@@ -26,31 +28,30 @@ public interface ScheduleDao
 
     List<Schedule> getGroupSchedules(Integer groupId);
 
-    void Insert(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-                Integer dayOfWeek, Integer numberOfWeek);
+    void insert(Schedule schedule);
 
-    void Merge(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-               Integer dayOfWeek, Integer numberOfWeek);
+    void merge(Schedule schedule);
 
-    void Update(Integer id, Integer classNumber, Integer classroomId, Integer subjectId, Integer subjectTypeId,
-                Integer dayOfWeek, Integer numberOfWeek);
+    void update(Schedule schedule);
 
-    void Delete(Integer id);
+    void insertGroupSchedule(GroupSchedule groupSchedule);
 
-    void DeleteAll();
+    void mergeGroupSchedule(GroupSchedule groupSchedule);
 
-    void DeleteUserSchedule(Long userId);
+    void insertUserSchedule(UserSchedule userSchedule);
 
-    void DeleteGroupSchedule(Integer groupId);
+    void mergeUserSchedule(UserSchedule userSchedule);
+
+    void delete(Integer id);
+
+    void deleteAll();
+
+    void deleteUserSchedule(Long userId);
+
+    void deleteGroupSchedule(Integer groupId);
 
     Integer Count();
 
-    void Insert_Group_Schedule(Integer groupId, Integer scheduleId);
 
-    void Merge_Group_Schedule(Integer groupId, Integer scheduleId);
-
-    void Insert_User_Schedule(Long userId, Integer scheduleId);
-
-    void Merge_User_Schedule(Long userId, Integer scheduleId);
 
 }

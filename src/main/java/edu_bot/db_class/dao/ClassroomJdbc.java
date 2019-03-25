@@ -7,15 +7,18 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class ClassroomJdbc implements ClassroomDao
 {
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<Classroom> classroomConsumer;
 
-    public ClassroomJdbc(JdbcTemplate jdbcTemplate)
+    public ClassroomJdbc(JdbcTemplate jdbcTemplate, Consumer<Classroom> classroomConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
+        this.classroomConsumer = classroomConsumer;
     }
 
     @Override
@@ -47,48 +50,39 @@ public class ClassroomJdbc implements ClassroomDao
     }
 
     @Override
-    public void Insert(Integer id, String name, String pic)
+    public void insert(Classroom classroom)
     {
         jdbcTemplate.update("INSERT INTO \"Classroom\" (\"id\", \"className\", \"pic\")  VALUES (?, ?, ?)",
-                id, name, pic);
+                classroom.getId(), classroom.getClassName(), classroom.getPic());
     }
 
     @Override
-    public void Merge(Integer id, String name, String pic)
+    public void merge(Classroom classroom)
     {
-        jdbcTemplate.update("MERGE INTO \"Classroom\" (\"id\", \"className\", \"pic\") KEY(\"id\") VALUES (?, ?, ?)",
-                id, name, pic);
+        classroomConsumer.accept(classroom);
     }
 
-    /*@Override
-    public void Merge(Integer id, String name, String pic)
-    {
-        jdbcTemplate.update("INSERT INTO \"Classroom\" (\"id\", \"className\", \"pic\")  VALUES (?, ?, ?) " +
-                        "ON CONFLICT (\"id\") DO UPDATE SET \"className\" = ?, \"pic\" = ?",
-                id, name, pic, name, pic);
-    }*/
-
     @Override
-    public void Update(Integer id, String name, String pic)
+    public void update(Classroom classroom)
     {
         jdbcTemplate.update("UPDATE \"Classroom\" SET \"className\" = ?, \"pic\" = ? WHERE \"id\" = ?",
-                name, pic, id);
+                classroom.getClassName(), classroom.getPic(), classroom.getId());
     }
 
     @Override
-    public void Delete(Integer id)
+    public void delete(Integer id)
     {
         jdbcTemplate.update("DELETE FROM \"Classroom\" WHERE \"id\" = ?", id);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"Classroom\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"Classroom\"", Integer.class);
     }

@@ -25,6 +25,13 @@ public class User
         this.schedules = schedules;
     }
 
+    public User(Long chatId, String chatName, Integer groupId)
+    {
+        this.chatId = chatId;
+        this.chatName = chatName;
+        this.groupId = groupId;
+    }
+
     public User(Long chatId, String chatName, String groupName)
     {
         this.chatId = chatId;

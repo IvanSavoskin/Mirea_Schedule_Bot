@@ -1,5 +1,7 @@
 package edu_bot.db_class.dao;
 
+import edu_bot.db_class.consumer.AdminInfoMergeH2Consumer;
+import edu_bot.db_class.consumer.AdminInfoMergePostgresConsumer;
 import edu_bot.db_class.model.AdminInfo;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -7,15 +9,18 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class AdminInfoJdbc implements AdminInfoDao
 {
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<AdminInfo> adminInfoConsumer;
 
-    public AdminInfoJdbc(JdbcTemplate jdbcTemplate)
+    public AdminInfoJdbc(JdbcTemplate jdbcTemplate, Consumer<AdminInfo> adminInfoConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
+        this.adminInfoConsumer = adminInfoConsumer;
     }
 
 
@@ -44,31 +49,33 @@ public class AdminInfoJdbc implements AdminInfoDao
     }
 
     @Override
-    public void Insert(long chatId, String login, String password)
+    public void insert(AdminInfo adminInfo)
     {
-        jdbcTemplate.update("INSERT INTO \"AdminInfo\" (\"chatId\", \"login\", \"password\") VALUES (?, ?, ?)", chatId, login, password);
+        jdbcTemplate.update("INSERT INTO \"AdminInfo\" (\"chatId\", \"login\", \"password\") VALUES (?, ?, ?)",
+                adminInfo.getChatId(), adminInfo.getLogin(), adminInfo.getPassword());
     }
 
     @Override
-    public void Merge(long chatId, String login, String password)
+    public void merge(AdminInfo adminInfo)
     {
-        jdbcTemplate.update("MERGE INTO \"AdminInfo\" (\"chatId\", \"login\", \"password\") KEY(\"chatId\") VALUES (?, ?, ?)", chatId, login, password);
+        adminInfoConsumer.accept(adminInfo);
     }
 
     @Override
-    public void Update(long chatId, String login, String password)
+    public void update(AdminInfo adminInfo)
     {
-        jdbcTemplate.update("UPDATE \"AdminInfo\" SET \"login\" = ?, \"password\" = ? WHERE \"chatId\" = ?", login, password, chatId);
+        jdbcTemplate.update("UPDATE \"AdminInfo\" SET \"login\" = ?, \"password\" = ? WHERE \"chatId\" = ?",
+                adminInfo.getLogin(), adminInfo.getPassword(), adminInfo.getChatId());
     }
 
     @Override
-    public void Delete(long chatId)
+    public void delete(long chatId)
     {
         jdbcTemplate.update("DELETE FROM \"AdminInfo\" WHERE \"chatId\" = ?",  chatId);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"AdminInfo\"");
     }

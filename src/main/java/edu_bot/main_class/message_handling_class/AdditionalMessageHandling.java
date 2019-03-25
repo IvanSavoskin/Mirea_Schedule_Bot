@@ -180,21 +180,25 @@ public class AdditionalMessageHandling
     protected void sendScheduleForDate(Message msg_final, Integer dayOfWeek, Integer numberOfWeek, String day)
     {
         User user = userDao.getUser(msg_final.getChatId());
-        if ((user.getGroupId() != 0) && (user.getGroupId() != null))
+        int groupId = user.getGroupId();
+        List<Schedule> schedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
+        int size = schedules.size();
+        if (groupId != -1 && size == 0)
         {
-            int groupId = user.getGroupId();
             int newNumberOfWeek;
             if (numberOfWeek%2 == 0)
                 newNumberOfWeek = -2;
             else
                 newNumberOfWeek = -1;
-            List<Schedule> schedules = scheduleDao.getSchedulesForGroupForDay(groupId, newNumberOfWeek,
+            schedules = scheduleDao.getSchedulesForGroupForDay(groupId, newNumberOfWeek,
                     dayOfWeek, msg_final.getChatId());
             if (schedules.size() == 0)
                 schedules = scheduleDao.getSchedulesForGroupForDay(groupId, numberOfWeek, dayOfWeek, msg_final.getChatId());
 
             Main._Log.info("Отправка блока расписаний для группы " + groupDao.getGroup(groupId).getGroupName()
                     + " для дня недели " + day + ". Количество пар равно " + schedules.size() + "\n");
+
+            schedules.sort(Comparator.comparing(Schedule::getClassNumber));
 
             if (schedules.size() > 0)
             {
@@ -238,14 +242,14 @@ public class AdditionalMessageHandling
             }
             else bot.sendMsg(msg_final, "Пары дома!", false);
         }
-        else if (scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() != 0)
+        else if (groupId == -1 && size > 0)
         {
             int newNumberOfWeek;
             if (numberOfWeek%2 == 0)
                 newNumberOfWeek = -2;
             else
                 newNumberOfWeek = -1;
-            List<Schedule> schedules = scheduleDao.getSchedulesForUserForDay(msg_final.getChatId(), newNumberOfWeek,
+            schedules = scheduleDao.getSchedulesForUserForDay(msg_final.getChatId(), newNumberOfWeek,
                     dayOfWeek);
             if (schedules.size() == 0)
                 schedules = scheduleDao.getSchedulesForUserForDay(msg_final.getChatId(), numberOfWeek, dayOfWeek);
@@ -295,8 +299,7 @@ public class AdditionalMessageHandling
             }
             else bot.sendMsg(msg_final, "Пары дома!", false);
         }
-        else if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                ((user.getGroupId() == 0) || (user.getGroupId() == null)))
+        else if (size == 0 && groupId == -1)
         {
             bot.sendMsg(msg_final, "К вашему профилю не подключены расписания. " +
                     "Выберете группу в меню настроек или установите свое расписание", true);
@@ -411,19 +414,20 @@ public class AdditionalMessageHandling
     {
         Date date = c.getTime();
         Integer dayOfWeek = 7 - (8 - c.get(Calendar.DAY_OF_WEEK))%7;
-        String day = new SimpleDateFormat("EEEE").format(date);
+        String day = new SimpleDateFormat( "EEEE", new Locale("ru")).format(date);
         Integer numberOfWeek = getCurrentWeek(c);
         User user = userDao.getUser(msg_final.getChatId());
         Integer groupId = user.getGroupId();
-        List<Schedule> userSchedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
-        if ((groupId != 0) && (groupId != null) && userSchedules.size() == 0)
+        List<Schedule> schedules = scheduleDao.getSchedulesForUser(msg_final.getChatId());
+        int size = schedules.size();
+        if (groupId != -1 && size == 0)
         {
             int newNumberOfWeek;
             if (numberOfWeek%2 == 0)
                 newNumberOfWeek = -2;
             else
                 newNumberOfWeek = -1;
-            List<Schedule> schedules = scheduleDao.getSchedulesForGroupForDay(groupId, newNumberOfWeek, dayOfWeek,
+                schedules = scheduleDao.getSchedulesForGroupForDay(groupId, newNumberOfWeek, dayOfWeek,
                     msg_final.getChatId());
             if (schedules.size() == 0)
                 schedules = scheduleDao.getSchedulesForGroupForDay(groupId, numberOfWeek, dayOfWeek, msg_final.getChatId());
@@ -485,14 +489,14 @@ public class AdditionalMessageHandling
                 bot.sendMsg(msg_final,  writeDate + "\n*" + firstUpperCase(day) + ", " + numberOfWeek +
                         " неделя*\n\n" + "Сегодня у вас нет пар", true);
         }
-        else if (userSchedules.size() != 0)
+        else if (size > 0 && groupId == -1)
         {
             int newNumberOfWeek;
             if (numberOfWeek%2 == 0)
                 newNumberOfWeek = -2;
             else
                 newNumberOfWeek = -1;
-            List<Schedule> schedules = scheduleDao.getSchedulesForUserForDay(msg_final.getChatId(),
+            schedules = scheduleDao.getSchedulesForUserForDay(msg_final.getChatId(),
                     newNumberOfWeek, dayOfWeek);
             if (schedules.size() == 0)
                 schedules = scheduleDao.getSchedulesForUserForDay(msg_final.getChatId(), numberOfWeek, dayOfWeek);
@@ -554,7 +558,7 @@ public class AdditionalMessageHandling
             else bot.sendMsg(msg_final,  "Сегодня у вас нет пар",
                     true);
         }
-        else if (userSchedules.size() == 0 && ((groupId == 0) || (groupId == null)))
+        else if (size == 0 && groupId == -1)
         {
             bot.sendMsg(msg_final, "К вашему профилю не подключены расписания. " +
                     "Выберете группу в меню настроек или установите свое расписание", true);
@@ -564,34 +568,33 @@ public class AdditionalMessageHandling
     protected void preparationTeacherBySubjectSend(String txt, Message msg_final)
     {
         User user = userDao.getUser(msg_final.getChatId());
+        int groupId = user.getGroupId();
         List<Schedule> schedules = scheduleDao.getSchedulesForUser(user.getChatId());
-        if (((user.getGroupId() != 0) && (user.getGroupId() != null)) || schedules.size() != 0)
+        int size = schedules.size();
+        if (groupId != -1 || size > 0)
         {
             List<Teacher> teachers = new ArrayList<>();
 
-            if ((user.getGroupId() != 0) && (user.getGroupId() != null))
+            if (groupId != -1)
                 teachers = teacherDao.getTeacherForSubject(txt);
-            else if (schedules.size() != 0)
+            else if (size > 0)
                 teachers = teacherDao.getTeacherForSubjectForCustomSchedule(txt, user.getChatId());
 
-            if (teachers.size() != 0)
+            if (teachers.size() == 1)
             {
-                if (teachers.size() == 1)
+                Teacher teacher = teachers.get(0);
+                if (teacher.getSurname() == null || teacher.getSurname().equals(""))
                 {
-                    Teacher teacher = teachers.get(0);
-                    if (teacher.getSurname() == null || teacher.getSurname().equals(""))
-                    {
-                        bot.sendMsg(msg_final, "Преподавателей данного предмета не " +
-                                "найдено, так как они не указаны в расписании", true);
-                        bot.sendChatActionTyping(msg_final);
-                        bot.sendTeacherKeyboard(msg_final, false);
-                    }
-                    else
-                    {
-                        getTeacherBySubject(txt, msg_final, teachers);
-                        bot.sendTeacherKeyboard(msg_final, false);
-                    }
+                    bot.sendMsg(msg_final, "Преподавателей данного предмета не " +
+                            "найдено, так как они не указаны в расписании", true);
+                    bot.sendChatActionTyping(msg_final);
+                    bot.sendTeacherKeyboard(msg_final, false);
                 }
+            }
+            else if (teachers.size() > 1)
+            {
+                getTeacherBySubject(txt, msg_final, teachers);
+                bot.sendTeacherKeyboard(msg_final, false);
             }
             else
             {
@@ -604,8 +607,7 @@ public class AdditionalMessageHandling
                 }
             }
         }
-        else if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                ((user.getGroupId() == 0) || (user.getGroupId() == null)))
+        else if (size == 0 && groupId == -1)
         {
             bot.sendMsg(msg_final, "К вашему профилю не подключены расписания. " +
                     "Выберете группу в меню настроек или установите свое расписание", true);
@@ -616,45 +618,45 @@ public class AdditionalMessageHandling
     {
         Main._Log.info("Отправка преподавателей для дисциплины " + txt + "\n");
 
-        if (teachers.size() > 0)
+        for (Teacher teacher: teachers)
         {
-            for (Teacher teacher: teachers)
-            {
-                String teacherName = "";
-                String teacherSurname = "";
-                String teacherSecond_Name = "";
+            String teacherName = "";
+            String teacherSurname = "";
+            String teacherSecond_Name = "";
 
-                if (teacher.getSurname() != null && !teacher.getSurname().equals(""))
-                    teacherSurname = teacher.getSurname() + " ";
+            String surname = teacher.getSurname();
+            String name = teacher.getName();
+            String second_name = teacher.getSecond_name();
 
-                if (teacher.getName() != null && !teacher.getName().equals(""))
-                    teacherName = teacher.getName() + " ";
+            if (surname != null && !surname.equals(""))
+                teacherSurname = surname + " ";
 
-                if (teacher.getSecond_name() != null && !teacher.getSecond_name().equals(""))
-                    teacherSecond_Name = teacher.getSecond_name();
+            if (name != null && !name.equals(""))
+                teacherName = name + " ";
 
-                bot.sendChatActionTyping(msg_final);
-                if (!teacherSurname.equals(""))
-                    bot.sendMsg(msg_final, teacherSurname + teacherName + teacherSecond_Name,
-                            false);
-            }
+            if (second_name != null && !second_name.equals(""))
+                teacherSecond_Name = second_name;
+
+            bot.sendChatActionTyping(msg_final);
+            if (!teacherSurname.equals(""))
+                bot.sendMsg(msg_final, teacherSurname + teacherName + teacherSecond_Name,
+                        false);
         }
-        else
-            bot.sendMsg(msg_final, "Преподаватели по данному предмету не найдено. " +
-                    "Возможно вы ошиблись в написании ФИО преподавателя или в базе нет информации о нем", true);
     }
 
     protected void getTeacherBySurname(String txt, Message msg_final)
     {
         User user = userDao.getUser(msg_final.getChatId());
+        int groupId = user.getGroupId();
         List<Schedule> schedules = scheduleDao.getSchedulesForUser(user.getChatId());
-        if (((user.getGroupId() != 0) && (user.getGroupId() != null)) || schedules.size() != 0)
+        int size = schedules.size();
+        if (groupId != -1 || size > 0)
         {
             List<Teacher> teachers = new ArrayList<>();
 
-            if ((user.getGroupId() != 0) && (user.getGroupId() != null))
+            if (groupId != -1 && size == 0)
                 teachers = teacherDao.getTeacherForSurname(txt);
-            else if (schedules.size() != 0)
+            else if (groupId == -1 && size > 0)
                 teachers = teacherDao.getTeacherForSurnameForCustomSchedule(txt, user.getChatId());
 
             if ((teachers.size() > 0))
@@ -687,8 +689,7 @@ public class AdditionalMessageHandling
                         "Пожалуйста повторите запрос.", true);
             }
         }
-        else if ((scheduleDao.getSchedulesForUser(msg_final.getChatId()).size() == 0) &&
-                ((user.getGroupId() == 0) || (user.getGroupId() == null)))
+        else if (size == 0 && groupId == -1)
         {
             bot.sendMsg(msg_final, "К вашему профилю не подключены расписания. " +
                     "Выберете группу в меню настроек или установите свое расписание", true);
@@ -703,8 +704,8 @@ public class AdditionalMessageHandling
         {
             for (Teacher teacher : teachers)
             {
-                if (teacher.getPhone_number() != null & !teacher.getPhone_number().trim().equals("") &
-                        teacher.getMail() != null & !teacher.getMail().trim().equals(""))
+                if (teacher.getPhone_number() != null && !teacher.getPhone_number().trim().equals("") &&
+                        teacher.getMail() != null && !teacher.getMail().trim().equals(""))
                 {
                     String name = "";
                     String second_name = "";
@@ -744,7 +745,7 @@ public class AdditionalMessageHandling
 
     protected boolean checkDate(String date)
     {
-        Pattern p = Pattern.compile("[1-31]\\.[1-12]\\.\\d\\d\\d\\d");
+        Pattern p = Pattern.compile("\\d\\d\\.\\d\\d\\.\\d\\d\\d\\d");
         Matcher m = p.matcher(date);
         return  m.matches();
     }

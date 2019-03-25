@@ -23,6 +23,16 @@ public class Teacher {
         this.subjects = subjects;
     }
 
+    public Teacher(int id, String name, String surname, String second_name, String phone_number, String mail)
+    {
+        this.id = id;
+        this.name = name;
+        this.surname = surname;
+        this.second_name = second_name;
+        this.phone_number = phone_number;
+        this.mail = mail;
+    }
+
     public Integer getId() {
         return id;
     }

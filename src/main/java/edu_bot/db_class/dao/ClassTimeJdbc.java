@@ -7,16 +7,19 @@ import org.springframework.stereotype.Repository;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.function.Consumer;
 
 @Repository
 public class ClassTimeJdbc implements ClassTimeDao
 {
 
     private final JdbcTemplate jdbcTemplate;
+    private final Consumer<ClassTime> classTimeConsumer;
 
-    public ClassTimeJdbc(JdbcTemplate jdbcTemplate)
+    public ClassTimeJdbc(JdbcTemplate jdbcTemplate, Consumer<ClassTime> classTimeConsumer)
     {
         this.jdbcTemplate = jdbcTemplate;
+        this.classTimeConsumer = classTimeConsumer;
     }
 
     @Override
@@ -45,48 +48,39 @@ public class ClassTimeJdbc implements ClassTimeDao
     }
 
     @Override
-    public void Insert(Integer classNumber, String classStart, String classStop)
+    public void insert(ClassTime classTime)
     {
         jdbcTemplate.update("INSERT INTO \"ClassTime\" (\"classNumber\", \"classStart\", \"classStop\") " +
-                "VALUES (?, ?, ?)", classNumber, classStart, classStop);
+                "VALUES (?, ?, ?)", classTime.getClassNumber(), classTime.getClassStart(), classTime.getClassStop());
     }
 
     @Override
-    public void Merge(Integer classNumber, String classStart, String classStop)
+    public void merge(ClassTime classTime)
     {
-        jdbcTemplate.update("MERGE INTO \"ClassTime\" (\"classNumber\", \"classStart\", \"classStop\") " + 
-                        "KEY(\"classNumber\") VALUES (?, ?, ?)", classNumber, classStart, classStop);
+        classTimeConsumer.accept(classTime);
     }
 
-    /*@Override
-    public void Merge(Integer classNumber, String classStart, String classStop)
-    {
-        jdbcTemplate.update("INSERT INTO \"ClassTime\" (\"classNumber\", \"classStart\", \"classStop\") " +
-                "VALUES (?, ?, ?) ON CONFLICT ( \"classNumber\") DO UPDATE SET \"classStart\" = ?, \"classStop\" = ?",
-                classNumber, classStart, classStop, classStart, classStop);
-    }*/
-
     @Override
-    public void Update(Integer classNumber, String classStart, String classStop)
+    public void update(ClassTime classTime)
     {
         jdbcTemplate.update("UPDATE \"ClassTime\" SET \"classStart\" = ?, \"classStop\" = ? " +
-                "WHERE \"classNumber\" = ?", classStart, classStop, classNumber);
+                "WHERE \"classNumber\" = ?", classTime.getClassStart(), classTime.getClassStop(), classTime.getClassNumber());
     }
 
     @Override
-    public void Delete(Integer classNumber)
+    public void delete(Integer classNumber)
     {
         jdbcTemplate.update("DELETE FROM \"ClassTime\" WHERE \"classNumber\" = ?", classNumber);
     }
 
     @Override
-    public void DeleteAll()
+    public void deleteAll()
     {
         jdbcTemplate.update("DELETE FROM \"ClassTime\"");
     }
 
     @Override
-    public Integer Count()
+    public Integer count()
     {
         return jdbcTemplate.queryForObject("SELECT COUNT (*) FROM \"ClassTime\"", Integer.class);
     }

@@ -13,16 +13,16 @@ public interface ClassTimeDao
 
     ClassTime getClassTimeForSchedule(Integer classNumber, Integer scheduleId);
 
-    void Insert(Integer classNumber, String classStart, String classStop);
+    void insert(ClassTime classTime);
 
-    void Merge(Integer classNumber, String classStart, String classStop);
+    void merge(ClassTime classTime);
 
-    void Update(Integer classNumber, String classStart, String classStop);
+    void update(ClassTime classTime);
 
-    void Delete(Integer classNumber);
+    void delete(Integer classNumber);
 
-    void DeleteAll();
+    void deleteAll();
 
-    Integer Count();
+    Integer count();
 
 }
